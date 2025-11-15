@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('inhouse_details', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('production_id')->constrained('production')->cascadeOnDelete();
+            $table->foreignId('production_id')->constrained('productions')->cascadeOnDelete();
             $table->date('start_date');
             $table->date('end_date');
             $table->decimal('production_budget', 10, 2);

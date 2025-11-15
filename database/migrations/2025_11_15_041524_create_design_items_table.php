@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('design_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('design_id')->constrained('design')->cascadeOnDelete();
+            $table->foreignId('design_id')->constrained('designs')->cascadeOnDelete();
             $table->string('design_file');
             $table->text('design_notes')->nullable();
             $table->enum('design_status', ['revision', 'approved'])->nullable();
