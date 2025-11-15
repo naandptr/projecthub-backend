@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('production', function (Blueprint $table) {
+        Schema::create('productions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
             $table->enum('production_type', ['in_house', 'vendor']);
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('production');
+        Schema::dropIfExists('productions');
     }
 };

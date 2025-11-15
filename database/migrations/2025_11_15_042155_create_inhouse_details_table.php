@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('inhouse_detail', function (Blueprint $table) {
+        Schema::create('inhouse_details', function (Blueprint $table) {
             $table->id();
             $table->foreignId('production_id')->constrained('production')->cascadeOnDelete();
             $table->date('start_date');
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('inhouse_detail');
+        Schema::dropIfExists('inhouse_details');
     }
 };
