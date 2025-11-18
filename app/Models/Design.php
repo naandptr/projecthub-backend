@@ -10,7 +10,17 @@ class Design extends Model
     use HasFactory;
 
     protected $table = 'designs';
-    protected $fillable = ['assigned_to'];
+    protected $fillable = ['order_id', 'assigned_to'];
+
+    public function order()
+    {
+        return $this->belongsTo(Design::class, 'order_id', 'id');
+    }
+
+    public function designer()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
 
     public function designItem()
     {

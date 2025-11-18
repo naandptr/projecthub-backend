@@ -12,6 +12,25 @@ class Order extends Model
     protected $table = 'orders';
     protected $fillable = ['order_number', 'created_by', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes'];
 
+    public static function generateOrderNumber()
+    {
+        $prefix = "HY-";
+
+        $date = now()->format('dm y'); 
+
+        $lastOrder = self::whereDate('created_at', today())
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $next = $lastOrder
+            ? intval(substr($lastOrder->order_number, -5)) + 1
+            : 1;
+
+        $counter = str_pad($next, 5, '0', STR_PAD_LEFT);
+
+        return $prefix . $date . "-" . $counter;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
