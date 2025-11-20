@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\DesignController as AdminDesignController;
+use App\Http\Controllers\Admin\SpkController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -34,5 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/designs/{id}', [AdminDesignController::class, 'show']);
         Route::put('/design-items/{id}', [AdminDesignController::class, 'updateItemStatus']);
         Route::post('/designs/{id}/confirm', [AdminDesignController::class, 'confirmDesign']);
+
+        Route::post('/spk', [SpkController::class, 'store']);
     });
 });

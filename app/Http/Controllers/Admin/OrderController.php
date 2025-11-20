@@ -84,7 +84,7 @@ class OrderController extends Controller
 
 
             if (!$designer) {
-                throw new \Exception("No active designers!");
+                throw new \Exception("No active design PIC!");
             }
 
             Design::create([
