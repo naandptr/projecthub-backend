@@ -10,8 +10,9 @@ class Order extends Model
     use HasFactory;
 
     protected $table = 'orders';
+    protected $primaryKey = 'id';
     protected $fillable = ['order_number', 'created_by', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes'];
-
+    public $timestamps = true;
     public static function generateOrderNumber()
     {
         $prefix = "HY-";
@@ -28,6 +29,11 @@ class Order extends Model
         $counter = str_pad($next, 5, '0', STR_PAD_LEFT);
 
         return $prefix . $date . "-" . $counter;
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
     }
 
     public function user()

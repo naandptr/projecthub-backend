@@ -2,28 +2,32 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Design extends Model
 {
-    use HasFactory;
-
     protected $table = 'designs';
-    protected $fillable = ['order_id', 'assigned_to'];
+    protected $primaryKey = 'id';
+    public $timestamps = true;
 
+    protected $fillable = [
+        'order_id',
+        'assigned_to',
+    ];
+
+    // Relasi ke Order
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'id');
     }
-
-    public function designer()
+    // Relasi ke User (Designer yang assign)
+    public function assignedTo()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assigned_to', 'id');
     }
-
-    public function designItem()
+    public function designItems()
     {
-        return $this->hasMany(designItem::class, 'design_id', 'id');
+        return $this->hasMany(DesignItem::class, 'design_id', 'id');
     }
 }
