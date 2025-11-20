@@ -16,7 +16,6 @@ class Order extends Model
     public static function generateOrderNumber()
     {
         $prefix = "HY-";
-
         $date = now()->format('dm y'); 
 
         $lastOrder = self::whereDate('created_at', today())
@@ -47,7 +46,12 @@ class Order extends Model
         return $this->hasOne(Design::class, 'order_id', 'id');
     }
 
-    public function spk()
+    public function spks()
+    {
+        return $this->belongsToMany(Spk::class, 'spk_orders', 'order_id', 'spk_id');
+    }
+
+    public function spkOrder()
     {
         return $this->hasOne(Spk::class, 'order_id', 'id');
     }

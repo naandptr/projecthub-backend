@@ -82,7 +82,6 @@ class OrderController extends Controller
             ->where('user_status', 'active')
             ->first();
 
-
             if (!$assignedTo) {
                 throw new \Exception("No active designers!");
             }
