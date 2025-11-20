@@ -17,7 +17,7 @@ class OrderController extends Controller
     {
         $orders = Order::with([
             'design',
-            'design.designer',
+            'design.assignedTo',
             'statusHistory'
         ])->get();
 
@@ -32,7 +32,7 @@ class OrderController extends Controller
     {
         $order = Order::with([
             'design',
-            'design.designer',
+            'design.assignedTo',
             'statusHistory'
         ])->find($id);
 
@@ -76,20 +76,20 @@ class OrderController extends Controller
 
             $order = Order::create($validated);
 
-            $designer = User::whereHas('role', function ($q) {
+            $assignedTo = User::whereHas('role', function ($q) {
                 $q->where('role_name', 'designer_pic');
             })
             ->where('user_status', 'active')
             ->first();
 
 
-            if (!$designer) {
+            if (!$assignedTo) {
                 throw new \Exception("No active designers!");
             }
 
             Design::create([
                 'order_id' => $order->id,
-                'assigned_to' => $designer->id,
+                'assigned_to' => $assignedTo->id,
             ]);
 
             StatusHistory::create([
