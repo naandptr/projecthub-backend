@@ -13,10 +13,11 @@ class Order extends Model
     protected $primaryKey = 'id';
     protected $fillable = ['order_number', 'created_by', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes'];
     public $timestamps = true;
+    
     public static function generateOrderNumber()
     {
         $prefix = "HY-";
-        $date = now()->format('dm y'); 
+        $date = now()->format('dmY'); 
 
         $lastOrder = self::whereDate('created_at', today())
             ->orderBy('id', 'desc')
@@ -32,11 +33,6 @@ class Order extends Model
     }
 
     public function createdBy()
-    {
-        return $this->belongsTo(User::class, 'created_by', 'id');
-    }
-
-    public function user()
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
     }

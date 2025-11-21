@@ -14,7 +14,7 @@ class DesignController extends Controller
 {
     public function index()
     {
-        $designs = Design::with(['order', 'designer'])->get();
+        $designs = Design::with(['order', 'assignedTo'])->get();
 
         return response()->json([
             'status' => 'success',
@@ -25,7 +25,7 @@ class DesignController extends Controller
 
     public function show($id)
     {
-        $design = Design::with(['order', 'designer', 'designItem'])
+        $design = Design::with(['order', 'assignedTo', 'designItem'])
             ->find($id);
 
         if (!$design) {
