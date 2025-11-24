@@ -28,13 +28,13 @@ class OrderController extends Controller
         ]);
     }
 
-    public function show($id)
+    public function show($orderId)
     {
         $order = Order::with([
             'design',
             'design.assignedTo',
             'statusHistory'
-        ])->find($id);
+        ])->find($orderId);
 
         if (!$order) {
             return response()->json([
@@ -107,9 +107,9 @@ class OrderController extends Controller
         });
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $orderId)
     {
-        $order = Order::findOrFail($id);
+        $order = Order::findOrFail($orderId);
 
         $request->validate([
             'cust_name' => 'string',
@@ -142,9 +142,9 @@ class OrderController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy($orderId)
     {
-        $order = Order::findOrFail($id);
+        $order = Order::findOrFail($orderId);
 
         if ($order->order_file && Storage::disk('public')->exists($order->order_file)) {
             Storage::disk('public')->delete($order->order_file);

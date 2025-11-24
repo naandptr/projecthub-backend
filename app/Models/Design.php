@@ -26,7 +26,7 @@ class Design extends Model
     {
         return $this->belongsTo(User::class, 'assigned_to', 'id');
     }
-    public function designItems()
+    public function designItem()
     {
         return $this->hasMany(DesignItem::class, 'design_id', 'id');
     }
