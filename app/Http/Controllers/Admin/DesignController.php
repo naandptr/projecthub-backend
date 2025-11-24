@@ -23,10 +23,10 @@ class DesignController extends Controller
         ]);
     }
 
-    public function show($id)
+    public function show($designId)
     {
         $design = Design::with(['order', 'assignedTo', 'designItem'])
-            ->find($id);
+            ->find($designId);
 
         if (!$design) {
             return response()->json([
@@ -74,9 +74,9 @@ class DesignController extends Controller
         ]);
     }
 
-    public function confirmDesign($id)
+    public function confirmDesign($itemId)
     {
-        $design = Design::with('order')->findOrFail($id);
+        $design = Design::with('order')->findOrFail($itemId);
 
         $approvedItem = DesignItem::where('design_id', $design->id)
             ->where('design_status', 'approved')

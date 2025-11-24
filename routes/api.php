@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 use App\Http\Controllers\Admin\DesignController as AdminDesignController;
 use App\Http\Controllers\Admin\SpkController;
+use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\ShipmentController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -16,40 +18,48 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // DASHBOARD
     Route::get('/dashboard', function () {
-        return response()->json([
-            "message" => "Dashboard Access"
-        ]);
+        return response()->json(["message" => "Dashboard Access"]);
     })->middleware('role:superadmin,admin,designer_pic,production_pic');
 
-    Route::middleware('role:admin')->group(function () {
+    // ==== ADMIN ROUTES ====
+    Route::middleware('role:admin')->prefix('admin')->group(function () {
         // ORDER
         Route::get('/orders', [OrderController::class, 'index']);
         Route::post('/orders', [OrderController::class, 'store']);
-        Route::get('/orders/{id}', [OrderController::class, 'show']);
-        Route::put('/orders/{id}', [OrderController::class, 'update']);
-        Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
+        Route::get('/orders/{orderId}', [OrderController::class, 'show']);
+        Route::put('/orders/{orderId}', [OrderController::class, 'update']);
+        Route::delete('/orders/{orderId}', [OrderController::class, 'destroy']);
         
         // DESIGN
         Route::get('/designs', [AdminDesignController::class, 'index']);
-        Route::get('/designs/{id}', [AdminDesignController::class, 'show']);
-        Route::put('/design-items/{id}', [AdminDesignController::class, 'updateItemStatus']);
-        Route::post('/designs/{id}/confirm', [AdminDesignController::class, 'confirmDesign']);
+        Route::get('/designs/{designId}', [AdminDesignController::class, 'show']);
+        Route::put('/design-items/{itemId}', [AdminDesignController::class, 'updateItemStatus']);
+        Route::post('/designs/{itemId}/confirm', [AdminDesignController::class, 'confirmDesign']);
         Route::post('/spk', [SpkController::class, 'store']);
+
+        // PAYMENT 
+        Route::get('/payments', [PaymentController::class, 'index']);
+        Route::post('/payments/{orderId}', [PaymentController::class, 'store']);
+        Route::put('/payments/{paymentId}', [PaymentController::class, 'update']);
+        Route::delete('/payments/{paymentId}', [PaymentController::class, 'destroy']);
+
+        // SHIPMENT 
+        Route::post('/shipments/{orderId}', [ShipmentController::class, 'store']);
+        Route::put('/shipments/{shipmentId}', [ShipmentController::class, 'update']);
+        Route::delete('/shipments/{shipmentId}', [ShipmentController::class, 'destroy']);
     });
 
-    Route::middleware('role:designer_pic')->group(function () {
-        // MY TASKS/ORDER
+    // ==== DESIGN PIC ROUTES ====
+    Route::middleware('role:designer_pic')->prefix('designer')->group(function () {
+        // TASKS
         Route::get('/tasks', [DesignPicDesignController::class, 'index']);
         Route::get('/tasks/{orderId}', [DesignPicDesignController::class, 'show']);
-        
-        // START DESIGN
         Route::post('/tasks/{orderId}/start', [DesignPicDesignController::class, 'start']);
-        
-        // DESIGN ITEMS (UPLOAD, UPDATE, DELETE)
+
+        // DESIGN ITEMS
         Route::post('/design-items', [DesignPicDesignController::class, 'storeItem']);
-        Route::put('design-items/{itemId}', [DesignPicDesignController::class, 'updateItem']);
+        Route::put('/design-items/{itemId}', [DesignPicDesignController::class, 'updateItem']);
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });
 });

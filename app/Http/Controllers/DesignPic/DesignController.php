@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class DesignController extends Controller
 {
     /**
-     * GET /api/pic-design/tasks
+     * GET /api/designer/tasks
      * INDEX: Get all my tasks (orders assigned to me)
      */
     public function index(Request $request)
@@ -51,6 +51,7 @@ class DesignController extends Controller
                         'deadline' => $design->order->order_deadline,
                         'current_status' => $latestStatus?->status_stage ?? 'pending',
                         'design_stats' => [
+                            'in_progress' => $items->where('design_status', 'in_progress')->count(),
                             'approved' => $items->where('design_status', 'approved')->count(),
                             'revision' => $items->where('design_status', 'revision')->count(),
                             'total' => $items->count(),
@@ -70,7 +71,7 @@ class DesignController extends Controller
     }
 
     /**
-     * GET /api/pic-design/tasks/{orderId}
+     * GET /api/designer/tasks/{orderId}
      * SHOW: Get detail order dan design items
      */
     public function show(Request $request, $orderId)
@@ -148,7 +149,6 @@ class DesignController extends Controller
         }
     }
 
- 
 public function start(Request $request, $orderId)
 {
     DB::beginTransaction();
@@ -170,21 +170,36 @@ public function start(Request $request, $orderId)
 
         // Jika sudah di-assign ke saya, return success
         if ($order->design->assigned_to === $userId) {
-            // Check latest status
-            $latestStatus = $order->statusHistory()->latest('start_time')->first();
-            
-            DB::commit();
-            return response()->json([
-                'success' => true,
-                'message' => 'You are already working on this design',
-                'data' => [
-                    'order_id' => $orderId,
-                    'design_id' => $order->design->id,
-                    'status' => $latestStatus?->status_stage ?? 'designing',
-                    'assigned_to' => $userId,
-                ],
+
+        // Cek apakah sudah ada status designing
+        $hasDesigning = $order->statusHistory()
+            ->where('status_stage', 'designing')
+            ->exists();
+
+        // Jika belum ada, buat
+        if (!$hasDesigning) {
+            StatusHistory::create([
+                'order_id' => $orderId,
+                'status_stage' => 'designing',
+                'updated_by' => $userId,
+                'start_time' => now(),
             ]);
         }
+
+        $latestStatus = $order->statusHistory()->latest('start_time')->first();
+
+        DB::commit();
+        return response()->json([
+            'success' => true,
+            'message' => 'You are already working on this design',
+            'data' => [
+                'order_id' => $orderId,
+                'design_id' => $order->design->id,
+                'status' => $latestStatus?->status_stage ?? 'designing',
+                'assigned_to' => $userId,
+            ],
+        ]);
+    }
 
         // ✅ Jika belum di-assign, assign sekarang
         $order->design->update([
@@ -252,7 +267,7 @@ public function start(Request $request, $orderId)
                 'design_id' => $design->id,
                 'design_file' => $path,
                 'design_notes' => $request->input('design_notes') ?? null,
-                'design_status' => 'revision', // Status awal
+                'design_status' => 'in_progress', // Status awal
             ]);
 
             DB::commit();
@@ -279,7 +294,7 @@ public function start(Request $request, $orderId)
     }
 
     /**
-     * PUT /api/pic-design/design-items/{itemId}
+     * PUT /api/designer/design-items/{itemId}
      * UPDATE: Update design item (file/notes)
      */
     public function updateItem(Request $request, $itemId)
@@ -291,17 +306,16 @@ public function start(Request $request, $orderId)
 
         DB::beginTransaction();
         try {
-            $userId = auth()->user()->id;
             $designItem = DesignItem::with('design')->findOrFail($itemId);
 
-            // Verify user punya hak
-            if ($designItem->design->assigned_to !== $userId) {
-                throw new \Exception('You do not have permission to update this item');
+            // Cek user assigned ke design
+            if ($designItem->design->assigned_to !== auth()->id()) {
+                throw new \Exception('Forbidden - This item is not assigned to you');
             }
 
-            // Cek status masih bisa di-edit (revision)
-            if ($designItem->design_status !== 'revision') {
-                throw new \Exception('Cannot update design item with status: ' . $designItem->design_status);
+            // Hanya item in_progress yang boleh diedit
+            if ($designItem->design_status !== 'in_progress') {
+                throw new \Exception('Cannot update item with status: ' . $designItem->design_status);
             }
 
             $updateData = [];
@@ -354,7 +368,7 @@ public function start(Request $request, $orderId)
     }
 
     /**
-     * DELETE /api/pic-design/design-items/{itemId}
+     * DELETE /api/designer/design-items/{itemId}
      * DESTROY: Hapus design item
      */
     public function destroyItem(Request $request, $itemId)

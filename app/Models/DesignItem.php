@@ -14,7 +14,7 @@ class DesignItem extends Model
         'design_id',
         'design_file',
         'design_notes',
-        'design_status', // revision, approved
+        'design_status', // in_progress, revision, approved
     ];
 
     // Relasi ke Design
