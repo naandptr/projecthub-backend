@@ -10,11 +10,17 @@ class DesignItem extends Model
     protected $primaryKey = 'id';
     public $timestamps = true;
 
+    // ✅ CRITICAL: Pastikan semua field di-fillable
     protected $fillable = [
         'design_id',
         'design_file',
         'design_notes',
-        'design_status', // in_progress, revision, approved
+        'design_status',
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     // Relasi ke Design
