@@ -58,7 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tasks/{orderId}/start', [DesignPicDesignController::class, 'start']);
 
         // DESIGN ITEMS
-        Route::post('/design-items', [DesignPicDesignController::class, 'storeItem']);
+        Route::post('/design-items/{itemId}', [DesignPicDesignController::class, 'storeItem']);
         Route::put('/design-items/{itemId}', [DesignPicDesignController::class, 'updateItem']);
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });
