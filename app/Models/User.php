@@ -103,6 +103,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Design::class, 'assigned_to', 'id');
     }
 
+    public function production()
+    {
+        return $this->hasMany(Production::class, 'assigned_to', 'id');
+    }
+
     public function spk()
     {
         return $this->hasMany(Spk::class, 'assigned_to', 'id');

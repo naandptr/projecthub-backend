@@ -3,12 +3,14 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Superadmin\UserController as SuperadminUserController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\OrderController;
-use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 use App\Http\Controllers\Admin\DesignController as AdminDesignController;
 use App\Http\Controllers\Admin\SpkController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ShipmentController;
+use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -22,20 +24,34 @@ Route::middleware('auth:sanctum')->group(function () {
         return response()->json(["message" => "Dashboard Access"]);
     })->middleware('role:superadmin,admin,designer_pic,production_pic');
 
+    // ==== SUPERADMIN ROUTES ====
+    Route::middleware(['role:superadmin'])->prefix('superadmin')->group(function () {
+        // USER
+        Route::get('/users', [SuperadminUserController::class, 'index']);
+        Route::get('/users/{userId}', [SuperadminUserController::class, 'show']);
+        Route::post('/users', [SuperadminUserController::class, 'store']);
+        Route::put('/users/{userId}', [SuperadminUserController::class, 'update']);
+        Route::put('/users/{userId}/reset-password', [SuperadminUserController::class, 'resetPassword']);
+        Route::delete('/users/{userId}', [SuperadminUserController::class, 'destroy']);
+    });
+
     // ==== ADMIN ROUTES ====
     Route::middleware('role:admin')->prefix('admin')->group(function () {
+        // USER
+        Route::get('/users/by-role/{role}', [AdminUserController::class, 'getUsersByRole']);
+
         // ORDER
         Route::get('/orders', [OrderController::class, 'index']);
         Route::post('/orders', [OrderController::class, 'store']);
         Route::get('/orders/{orderId}', [OrderController::class, 'show']);
-        Route::put('/orders/{orderId}', [OrderController::class, 'update']);
+        Route::patch('/orders/{orderId}', [OrderController::class, 'update']);
         Route::delete('/orders/{orderId}', [OrderController::class, 'destroy']);
         
         // DESIGN
         Route::get('/designs', [AdminDesignController::class, 'index']);
         Route::get('/designs/{designId}', [AdminDesignController::class, 'show']);
         Route::put('/design-items/{itemId}', [AdminDesignController::class, 'updateItemStatus']);
-        Route::post('/designs/{itemId}/confirm', [AdminDesignController::class, 'confirmDesign']);
+        Route::post('/designs/{designId}/confirm', [AdminDesignController::class, 'confirmDesign']);
         Route::post('/spk', [SpkController::class, 'store']);
 
         // PAYMENT 

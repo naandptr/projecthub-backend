@@ -32,7 +32,7 @@ class ShipmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Shipment created',
+            'message' => 'Shipment created successfully',
             'data' => $shipment
         ]);
     }
@@ -52,7 +52,7 @@ class ShipmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Shipment updated',
+            'message' => 'Shipment updated succesfully',
             'data' => $shipment
         ]);
     }
@@ -63,7 +63,7 @@ class ShipmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Shipment deleted',
+            'message' => 'Shipment deleted successfully',
         ]);
     }
 }

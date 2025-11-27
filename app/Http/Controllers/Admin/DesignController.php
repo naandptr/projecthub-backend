@@ -74,9 +74,9 @@ class DesignController extends Controller
         ]);
     }
 
-    public function confirmDesign($itemId)
+    public function confirmDesign($designId)
     {
-        $design = Design::with('order')->findOrFail($itemId);
+        $design = Design::with('order')->findOrFail($designId);
 
         $approvedItem = DesignItem::where('design_id', $design->id)
             ->where('design_status', 'approved')

@@ -10,25 +10,25 @@ class Production extends Model
     use HasFactory;
 
     protected $table = 'productions';
-    protected $fillable = ['order_id', 'production_type', 'production_status'];
+    protected $fillable = ['order_id', 'assigned_to'];
 
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'id');
     }
 
-    public function vendorDetail()
+    public function assignedTo()
     {
-        return $this->hasOne(VendorDetail::class, 'production_id', 'id');
+        return $this->belongsTo(User::class, 'assigned_to', 'id');
     }
 
-    public function inhouseDetail()
+    public function productionDetail()
     {
-        return $this->hasOne(InHouseDetail::class, 'production_id', 'id');
+        return $this->hasOne(ProductionDetail::class, 'production_id', 'id');
     }
 
     public function productionResult()
     {
-        return $this->hasOne(productionResult::class, 'production_id', 'id');
+        return $this->hasOne(ProductionResult::class, 'production_id', 'id');
     }
 }

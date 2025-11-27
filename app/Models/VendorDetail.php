@@ -10,10 +10,10 @@ class VendorDetail extends Model
     use HasFactory;
 
     protected $table = 'vendor_details';
-    protected $fillable = ['production_id', 'vendor_name'];
+    protected $fillable = ['production_detail_id', 'vendor_name'];
 
-    public function production()
+    public function productionDetail()
     {
-        return $this->belongsTo(Production::class, 'production_id', 'id');
+        return $this->belongsTo(ProductionDetail::class, 'production_detail_id', 'id');
     }
 }
