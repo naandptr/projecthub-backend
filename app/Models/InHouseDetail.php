@@ -10,10 +10,10 @@ class InHouseDetail extends Model
     use HasFactory;
 
     protected $table = 'inhouse_details';
-    protected $fillable = ['production_id', 'start_date', 'end_date', 'production_budget'];
+    protected $fillable = ['production_detail_id', 'start_date', 'end_date', 'production_budget'];
 
-    public function production()
+    public function productionDetail()
     {
-        return $this->belongsTo(Production::class, 'production_id', 'id');
+        return $this->belongsTo(ProductionDetail::class, 'production_detail_id', 'id');
     }
 }

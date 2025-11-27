@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Order;
 use App\Models\Design;
+use App\Models\Production;
 use App\Models\StatusHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -32,7 +33,9 @@ class OrderController extends Controller
     {
         $order = Order::with([
             'design',
+            'production',
             'design.assignedTo',
+            'production.assignedTo',
             'statusHistory'
         ])->find($orderId);
 
@@ -63,12 +66,16 @@ class OrderController extends Controller
             'product_price' => 'required|integer',
             'order_notes' => 'nullable|string',
             'order_file' => 'nullable|file|max:1000',
+
+            'assigned_to_design' => 'nullable|exists:users,id',
+            'assigned_to_production' => 'nullable|exists:users,id',
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
 
             if ($request->hasFile('order_file')) {
-                $validated['order_file'] = $request->file('order_file')->store('orders', 'public');
+                $validated['order_file'] = $request->file('order_file')
+                    ->store('orders', 'public');
             }
 
             $validated['order_number'] = Order::generateOrderNumber();
@@ -76,20 +83,24 @@ class OrderController extends Controller
 
             $order = Order::create($validated);
 
-            $assignedTo = User::whereHas('role', function ($q) {
-                $q->where('role_name', 'designer_pic');
-            })
-            ->where('user_status', 'active')
-            ->first();
-
-            if (!$assignedTo) {
-                throw new \Exception("No active designers!");
+            if ($request->assigned_to_design) {
+                Design::create([
+                    'order_id' => $order->id,
+                    'assigned_to' => $request->assigned_to_design,
+                ]);
             }
 
-            Design::create([
-                'order_id' => $order->id,
-                'assigned_to' => $assignedTo->id,
-            ]);
+            if ($request->assigned_to_production) {
+                Production::create([
+                    'order_id' => $order->id,
+                    'assigned_to' => $request->assigned_to_production,
+                ]);
+            } else {
+                Production::create([
+                    'order_id' => $order->id,
+                    'assigned_to' => null,
+                ]);
+            }
 
             StatusHistory::create([
                 'order_id' => $order->id,
@@ -102,7 +113,7 @@ class OrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Order created successfully',
-                'data' => $order->load(['design', 'statusHistory']),
+                'data' => $order->load(['design', 'production', 'statusHistory']),
             ]);
         });
     }
@@ -121,6 +132,10 @@ class OrderController extends Controller
             'product_quantity' => 'integer',
             'product_price' => 'integer',
             'order_notes' => 'string|nullable',
+            'order_file' => 'nullable|file|max:1000',
+
+            'assigned_to_design' => 'nullable|exists:users,id',
+            'assigned_to_production' => 'nullable|exists:users,id',
         ]);
 
         $order->update($request->only([
@@ -133,12 +148,27 @@ class OrderController extends Controller
             'product_quantity',
             'product_price',
             'order_notes',
+            'order_file'
         ]));
+
+        if ($request->assigned_to_design !== null) {
+            $order->design()->updateOrCreate(
+                ['order_id' => $order->id],
+                ['assigned_to' => $request->assigned_to_design]
+            );
+        }
+
+        if ($request->assigned_to_production !== null) {
+            $order->production()->updateOrCreate(
+                ['order_id' => $order->id],
+                ['assigned_to' => $request->assigned_to_production]
+            );
+        }
 
         return response()->json([
             'status' => 'success',
             'message' => 'Order updated successfully',
-            'data' => $order
+            'data' => $order->load(['design', 'production']),
         ]);
     }
 
