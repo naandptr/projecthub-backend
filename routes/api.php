@@ -3,11 +3,13 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Superadmin\RoleController;
 use App\Http\Controllers\Superadmin\UserController as SuperadminUserController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\DesignController as AdminDesignController;
 use App\Http\Controllers\Admin\SpkController;
+use App\Http\Controllers\Admin\ProductionController as AdminProductionController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ShipmentController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
@@ -26,6 +28,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ==== SUPERADMIN ROUTES ====
     Route::middleware(['role:superadmin'])->prefix('superadmin')->group(function () {
+        // ROLE
+        Route::get('/roles', [RoleController::class, 'index']);
+        Route::post('/roles', [RoleController::class, 'store']);
+        Route::put('/roles/{roleId}', [RoleController::class, 'update']);
+        Route::delete('/roles/{roleId}', [RoleController::class, 'destroy']);
+
         // USER
         Route::get('/users', [SuperadminUserController::class, 'index']);
         Route::get('/users/{userId}', [SuperadminUserController::class, 'show']);
@@ -54,13 +62,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/designs/{designId}/confirm', [AdminDesignController::class, 'confirmDesign']);
         Route::post('/spk', [SpkController::class, 'store']);
 
+        // PRODUCTION
+        Route::get('/productions', [AdminProductionController::class, 'index']);
+
         // PAYMENT 
         Route::get('/payments', [PaymentController::class, 'index']);
+        Route::get('/payments/{orderId}', [PaymentController::class, 'show']);
         Route::post('/payments/{orderId}', [PaymentController::class, 'store']);
         Route::put('/payments/{paymentId}', [PaymentController::class, 'update']);
         Route::delete('/payments/{paymentId}', [PaymentController::class, 'destroy']);
 
         // SHIPMENT 
+        Route::get('/shipments/{orderId}', [ShipmentController::class, 'show']);
         Route::post('/shipments/{orderId}', [ShipmentController::class, 'store']);
         Route::put('/shipments/{shipmentId}', [ShipmentController::class, 'update']);
         Route::delete('/shipments/{shipmentId}', [ShipmentController::class, 'destroy']);
