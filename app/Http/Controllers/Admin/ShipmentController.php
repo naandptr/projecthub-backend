@@ -9,6 +9,26 @@ use Illuminate\Http\Request;
 
 class ShipmentController extends Controller
 {
+    public function show($orderId)
+    {
+        $shipment = Shipment::with([
+            'order',
+        ])->find($orderId);
+
+        if (!$shipment) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Shipment not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Shipment details',
+            'data' => $shipment
+        ]);
+    }
+
     public function store(Request $request, $orderId)
     {
         $request->validate([

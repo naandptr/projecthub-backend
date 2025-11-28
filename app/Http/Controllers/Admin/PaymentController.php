@@ -33,6 +33,26 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function show($orderId)
+    {
+        $payment = Payment::with([
+            'order',
+        ])->find($orderId);
+
+        if (!$payment) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Payment not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payment details',
+            'data' => $payment
+        ]);
+    }
+
     public function store(Request $request, $orderId)
     {
         $request->validate([
