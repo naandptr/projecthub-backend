@@ -25,7 +25,7 @@ class DesignController extends Controller
 
     public function show($designId)
     {
-        $design = Design::with(['order', 'assignedTo', 'designItem', 'order.statusHistory'])
+        $design = Design::with(['order', 'assignedTo', 'designItems', 'order.statusHistory'])
             ->find($designId);
 
         if (!$design) {
