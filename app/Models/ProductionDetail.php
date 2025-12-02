@@ -2,28 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductionDetail extends Model
 {
-    use HasFactory;
-
     protected $table = 'production_details';
-    protected $fillable = ['production_id', 'production_type'];
 
-    public function production()
-    {
-        return $this->belongsTo(Production::class, 'production_id', 'id');
-    }
+    // ✅ CRITICAL: Allow mass assignment
+    protected $fillable = [
+        'production_id',      // Foreign key
+        'production_type',    // 'in_house' or 'vendor'
+    ];
 
-    public function vendorDetail()
-    {
-        return $this->hasOne(VendorDetail::class, 'production_detail_id', 'id');
-    }
+    protected $guarded = [];
 
-    public function inhouseDetail()
+    /**
+     * Get the production that owns this detail
+     */
+    public function production(): BelongsTo
     {
-        return $this->hasOne(InHouseDetail::class, 'production_detail_id', 'id');
+        return $this->belongsTo(Production::class);
     }
 }

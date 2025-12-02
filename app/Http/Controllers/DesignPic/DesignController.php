@@ -317,114 +317,116 @@ public function start(Request $request, $orderId)
  * UPDATE: Update design item (file/notes)
  */
 public function updateItem(Request $request, $itemId)
-{
-    $request->validate([
-        'design_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,ai,psd|max:10240',
-        'design_notes' => 'nullable|string|max:500',
-    ]);
-
-    DB::beginTransaction();
-    try {
-        $itemId = (int) $itemId;
-        
-        // ✅ STEP 1: Find item
-        $designItem = DesignItem::with('design')->find($itemId);
-
-        if (!$designItem) {
-            throw new \Exception("Design item ID {$itemId} not found");
-        }
-
-        // ✅ STEP 2: Check authorization
-        if ($designItem->design->assigned_to !== auth()->id()) {
-            throw new \Exception('Forbidden - This item is not assigned to you');
-        }
-
-        // ✅ STEP 3: Check status
-        if ($designItem->design_status !== 'revision') {
-            throw new \Exception(
-                "Cannot update item with status '{$designItem->design_status}'. " .
-                "Only 'revision' items can be edited."
-            );
-        }
-
-        $updateData = [];
-        $oldFile = $designItem->design_file;
-
-        // ✅ STEP 4: Handle file upload
-        if ($request->hasFile('design_file')) {
-            $file = $request->file('design_file');
-            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-            $newPath = $file->storeAs('designs', $filename, 'public');
-
-            if (!$newPath) {
-                throw new \Exception('Failed to upload new file');
-            }
-
-            $updateData['design_file'] = $newPath;
-        }
-
-        // ✅ STEP 5: Handle notes update
-        if ($request->has('design_notes')) {
-            $notes = $request->input('design_notes');
-            $updateData['design_notes'] = $notes;
-        }
-
-        // ✅ STEP 6: Check if ada changes
-        if (empty($updateData)) {
-            DB::commit();
-            return response()->json([
-                'success' => false,
-                'message' => 'No changes to update. Please provide design_file or design_notes.',
-            ], 422);
-        }
-
-        // ✅ STEP 7: UPDATE DATABASE
-        $affectedRows = $designItem->update($updateData);
-        
-        // ✅ DEBUG: Check if update successful
-        if (!$affectedRows) {
-            throw new \Exception('Update failed - no rows affected');
-        }
-
-        // ✅ STEP 8: Delete old file if new file uploaded
-        if (isset($updateData['design_file']) && $oldFile && Storage::disk('public')->exists($oldFile)) {
-            Storage::disk('public')->delete($oldFile);
-        }
-
-        // ✅ STEP 9: Commit transaction
-        DB::commit();
-
-        // ✅ STEP 10: Refresh dan get updated data
-        $designItem->refresh();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Design item updated successfully',
-            'data' => [
-                'item_id' => $designItem->id,
-                'design_id' => $designItem->design_id,
-                'file_url' => asset('storage/' . $designItem->design_file),
-                'file_name' => basename($designItem->design_file),
-                'notes' => $designItem->design_notes,
-                'status' => $designItem->design_status,
-                'updated_at' => $designItem->updated_at->format('d M Y H:i:s'),
-            ],
+    {
+        $request->validate([
+            'design_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,ai,psd|max:10240',
+            'design_notes' => 'nullable|string|max:500',
+        ], [
+            'design_file.mimes' => 'File harus jpg, jpeg, png, pdf, ai, atau psd',
+            'design_file.max' => 'Ukuran file maksimal 10MB',
         ]);
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        
-        // Cleanup file jika upload baru gagal
-        if (isset($newPath) && Storage::disk('public')->exists($newPath)) {
-            Storage::disk('public')->delete($newPath);
-        }
+        DB::beginTransaction();
+        try {
+            $itemId = (int) $itemId;
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage(),
-        ], 500);
+            // ✅ STEP 1: Find item with design relation
+            $designItem = DesignItem::with('design')->find($itemId);
+            if (!$designItem) {
+                throw new \Exception("Design item ID {$itemId} not found");
+            }
+
+            // ✅ STEP 2: Check authorization (FIX: use user()->id)
+            if ($designItem->design->assigned_to !== auth()->user()->id) {
+                throw new \Exception('Forbidden - This item is not assigned to you');
+            }
+
+            // ✅ STEP 3: Check status (FIX: Allow both in_progress AND revision)
+            if (!in_array($designItem->design_status, ['in_progress', 'revision'])) {
+                throw new \Exception(
+                    "Cannot update item with status '{$designItem->design_status}'. " .
+                    "Only 'in_progress' or 'revision' items can be edited."
+                );
+            }
+
+            $updateData = [];
+            $oldFile = $designItem->design_file;
+
+            // ✅ STEP 4: Handle file upload
+            if ($request->hasFile('design_file')) {
+                $file = $request->file('design_file');
+                $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
+                $newPath = $file->storeAs('designs', $filename, 'public');
+
+                if (!$newPath) {
+                    throw new \Exception('Failed to upload new file');
+                }
+
+                $updateData['design_file'] = $newPath;
+            }
+
+            // ✅ STEP 5: Handle notes update
+            if ($request->has('design_notes')) {
+                $notes = $request->input('design_notes');
+                $updateData['design_notes'] = $notes;
+            }
+
+            // ✅ STEP 6: Check if ada changes
+            if (empty($updateData)) {
+                DB::commit();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No changes to update. Please provide design_file or design_notes.',
+                ], 422);
+            }
+
+            // ✅ STEP 7: UPDATE DATABASE
+            $affectedRows = $designItem->update($updateData);
+
+            // ✅ DEBUG: Check if update successful
+            if (!$affectedRows) {
+                throw new \Exception('Update failed - no rows affected');
+            }
+
+            // ✅ STEP 8: Delete old file if new file uploaded
+            if (isset($updateData['design_file']) && $oldFile && Storage::disk('public')->exists($oldFile)) {
+                Storage::disk('public')->delete($oldFile);
+            }
+
+            // ✅ STEP 9: Commit transaction
+            DB::commit();
+
+            // ✅ STEP 10: Refresh dan get updated data
+            $designItem->refresh();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Design item updated successfully',
+                'data' => [
+                    'item_id' => $designItem->id,
+                    'design_id' => $designItem->design_id,
+                    'file_url' => asset('storage/' . $designItem->design_file),
+                    'file_name' => basename($designItem->design_file),
+                    'notes' => $designItem->design_notes,
+                    'status' => $designItem->design_status,
+                    // 'status_label' => $designItem->status_label,
+                    'updated_at' => $designItem->updated_at->format('d M Y H:i:s'),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // Cleanup file jika upload baru gagal
+            if (isset($newPath) && Storage::disk('public')->exists($newPath)) {
+                Storage::disk('public')->delete($newPath);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
+        }
     }
-}
 
    
     public function destroyItem(Request $request, $itemId)

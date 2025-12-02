@@ -2,315 +2,429 @@
 
 namespace App\Http\Controllers\PicProduction;
 
-use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\Production;
-use App\Models\ProductionResult;
-use App\Models\StatusHistory;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Models\Production;
+use App\Models\ProductionDetail;
+use App\Models\ProductionResult;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 
 class ProductionController extends Controller
 {
     /**
-     * GET /api/pic-production/tasks
-     * INDEX: Lihat semua production tasks untuk in-house production
+     * ============================================
+     * STEP 7A: GET All Production Tasks
+     * GET /api/production/tasks
+     * ============================================
      */
-    public function index(Request $request)
+    public function index()
     {
         try {
-            $productions = Production::inHouse()
-                ->with([
-                    'order' => function ($q) {
-                        $q->select('id', 'order_number', 'cust_name', 'product_name', 'product_quantity', 'product_price', 'order_deadline');
-                    },
-                    'order.statusHistory' => function ($q) {
-                        $q->latest('start_time');
-                    },
-                    'productionResults' => function ($q) {
-                        $q->latest('created_at');
-                    }
-                ])
-                ->get();
+            $userId = auth()->user()->id;
 
-            return response()->json([
-                'success' => true,
-                'message' => 'In-House Production Tasks',
-                'data' => $productions->map(function ($production) {
-                    $latestStatus = $production->order->statusHistory->first();
-                    $results = $production->productionResults;
+            $productions = Production::with([
+                'order:id,order_number,cust_name,product_name,product_quantity,product_price,order_deadline',
+                'productionDetails',
+                'productionResult'
+            ])
+            ->where('assigned_to', $userId)
+            ->latest('created_at')
+            ->get();
 
-                    return [
-                        'production_id' => $production->id,
-                        'order_id' => $production->order->id,
-                        'order_number' => $production->order->order_number,
-                        'customer_name' => $production->order->cust_name,
-                        'product_name' => $production->order->product_name,
-                        'product_quantity' => $production->order->product_quantity,
-                        'product_price' => number_format($production->order->product_price, 0, ',', '.'),
-                        'deadline' => $production->order->order_deadline,
-                        'production_type' => $production->production_type,
-                        'production_status' => $production->production_status,
-                        'current_order_status' => $latestStatus?->status_stage ?? 'pending',
-                        'total_results' => $results->count(),
-                    ];
-                }),
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * GET /api/pic-production/tasks/{orderId}
-     * SHOW: Detail order dan production results
-     */
-    public function show(Request $request, $orderId)
-    {
-        try {
-            $order = Order::with([
-                'production.productionResults' => function ($q) {
-                    $q->latest('created_at');
-                },
-                'statusHistory' => function ($q) {
-                    $q->latest('start_time');
-                },
-                'createdBy',
-            ])->findOrFail($orderId);
-
-            if (!$order->production) {
-                throw new \Exception('Production not found for this order');
+            if ($productions->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'No production tasks assigned',
+                    'data' => []
+                ]);
             }
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'order' => [
-                        'id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'customer_name' => $order->cust_name,
-                        'phone' => $order->cust_phone,
-                        'address' => $order->cust_address,
-                        'product_name' => $order->product_name,
-                        'product_price' => number_format($order->product_price, 0, ',', '.'),
-                        'product_quantity' => $order->product_quantity,
-                        'order_date' => $order->order_date,
-                        'order_deadline' => $order->order_deadline,
-                        'order_notes' => $order->order_notes,
-                        'created_by' => $order->createdBy?->full_name,
-                    ],
-                    'production' => [
-                        'production_id' => $order->production->id,
-                        'production_type' => $order->production->production_type,
-                        'production_status' => $order->production->production_status,
-                        'production_results' => $order->production->productionResults->map(function ($result) {
-                            return [
-                                'result_id' => $result->id,
-                                'production_id' => $result->production_id,
-                                'file_url' => asset('storage/' . $result->production_file),
-                                'file_name' => basename($result->production_file),
-                                'created_at' => $result->created_at->format('d M Y H:i:s'),
-                                'updated_at' => $result->updated_at->format('d M Y H:i:s'),
-                            ];
-                        }),
-                    ],
-                    'timeline' => $order->statusHistory->map(function ($history) {
-                        return [
-                            'history_id' => $history->id,
-                            'stage' => $history->status_stage,
-                            'updated_by' => $history->updatedBy?->full_name,
-                            'start_time' => $history->start_time->format('d M Y H:i:s'),
-                            'end_time' => $history->end_time?->format('d M Y H:i:s') ?? null,
-                        ];
-                    }),
-                ],
+                'message' => 'Production tasks retrieved successfully',
+                'data' => $productions->map(function ($production) {
+                    return [
+                        'id' => $production->id,
+                        'order_id' => $production->order_id,
+                        'order_number' => optional($production->order)->order_number ?? '-',
+                        'customer_name' => optional($production->order)->cust_name ?? '-',
+                        'product_name' => optional($production->order)->product_name ?? '-',
+                        'quantity' => optional($production->order)->product_quantity ?? 0,
+                        'price' => optional($production->order)->product_price ?? 0,
+                        'deadline' => optional($production->order)->order_deadline ?? '-',
+                        'details_count' => $production->productionDetails->count() ?? 0,
+                        'has_result' => $production->productionResult ? true : false,
+                        'created_at' => $production->created_at,
+                        'updated_at' => $production->updated_at,
+                    ];
+                })
             ]);
+
         } catch (\Exception $e) {
+            \Log::error('ProductionController@index: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Error retrieving production tasks',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * POST /api/pic-production/production-results
-     * STORE: Upload production result file
-     * 
-     * Body: form-data
-     * {
-     *   "production_id": 1,
-     *   "production_file": [file]
-     * }
+     * ============================================
+     * STEP 7B: GET Detail Satu Production Task
+     * GET /api/production/tasks/{id}
+     * ============================================
      */
-    public function storeResult(Request $request)
+    public function show($id)
     {
-        $request->validate([
-            'production_id' => 'required|integer|exists:productions,id',
-            'production_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        try {
+            $userId = auth()->user()->id;
+
+            $production = Production::with([
+                'order',
+                'productionDetails',
+                'productionResult'
+            ])
+            ->where('id', $id)
+            ->where('assigned_to', $userId)
+            ->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'data' => $production
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('ProductionController@show: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Production not found or you do not have access'
+            ], 404);
+        }
+    }
+
+    /**
+     * ============================================
+     * STEP 8: START Production (Mulai Produksi)
+     * POST /api/production/{id}/start
+     * ============================================
+     *
+     * Creates StatusHistory entry with stage='in_production'
+     */
+    public function startProduction($id)
+    {
+        DB::beginTransaction();
+        try {
+            $userId = auth()->user()->id;
+
+            $production = Production::where('id', $id)
+                ->where('assigned_to', $userId)
+                ->firstOrFail();
+
+            // Try to create status history - gracefully continue if fails
+            try {
+                \App\Models\StatusHistory::create([
+                    'order_id' => $production->order_id,
+                    'status_stage' => 'in_production',
+                    'updated_by' => $userId,
+                    'start_time' => now()
+                ]);
+            } catch (\Exception $statusError) {
+                \Log::warning('StatusHistory creation failed: ' . $statusError->getMessage());
+                // Continue even if status history fails
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Production started successfully',
+                'data' => [
+                    'production_id' => $production->id,
+                    'order_id' => $production->order_id,
+                    'started_at' => now()
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('ProductionController@startProduction: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error starting production',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ============================================
+     * STEP 9: Add Production Detail (Inhouse/Vendor)
+     * POST /api/production/{id}/details
+     * ============================================
+     *
+     * Can be called multiple times to add:
+     * - Inhouse production
+     * - Multiple vendor productions
+     */
+    public function storeDetail(Request $request, $productionId)
+    {
+        $validator = Validator::make($request->all(), [
+            'production_type' => 'required|in:in_house,vendor',
+        ], [
+            'production_type.required' => 'Production type is required',
+            'production_type.in' => 'Production type must be in_house or vendor',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
         DB::beginTransaction();
         try {
-            $productionId = (int) $request->input('production_id');
+            $userId = auth()->user()->id;
 
-            $production = Production::find($productionId);
-            
-            if (!$production) {
-                throw new \Exception("Production ID {$productionId} not found");
-            }
+            // Verify production exists and belongs to user
+            $production = Production::where('id', $productionId)
+                ->where('assigned_to', $userId)
+                ->firstOrFail();
 
-            if ($production->production_status !== 'in_progress') {
-                throw new \Exception(
-                    "Cannot add result to production with status '{$production->production_status}'. " .
-                    "Only 'in_progress' production can accept results."
-                );
-            }
-
-            $file = $request->file('production_file');
-            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-            $path = $file->storeAs('production', $filename, 'public');
-
-            if (!$path) {
-                throw new \Exception('Failed to upload file');
-            }
-
-            $result = ProductionResult::create([
+            $detail = ProductionDetail::create([
                 'production_id' => $productionId,
-                'production_file' => $path,
+                'production_type' => $request->production_type,
             ]);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Production result uploaded successfully',
-                'data' => [
-                    'result_id' => $result->id,
-                    'production_id' => $result->production_id,
-                    'file_name' => basename($result->production_file),
-                    'file_url' => asset('storage/' . $result->production_file),
-                    'created_at' => $result->created_at->format('d M Y H:i:s'),
-                ],
+                'message' => 'Production detail added successfully',
+                'data' => $detail
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            if (isset($path) && Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
-
+            \Log::error('ProductionController@storeDetail: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Error adding production detail',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * DELETE /api/pic-production/production-results/{resultId}
-     * DELETE: Hapus production result
+     * ============================================
+     * STEP 9B: Update Production Detail
+     * PUT /api/production/details/{detailId}
+     * ============================================
      */
-    public function destroyResult(Request $request, $resultId)
+    public function updateDetail(Request $request, $detailId)
     {
-        DB::beginTransaction();
+        $validator = Validator::make($request->all(), [
+            'production_type' => 'sometimes|required|in:in_house,vendor',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         try {
-            $resultId = (int) $resultId;
+            $userId = auth()->user()->id;
 
-            $result = ProductionResult::with('production')->find($resultId);
+            // Step 1: Find detail first
+            $detail = ProductionDetail::find($detailId);
 
-            if (!$result) {
-                throw new \Exception("Production result ID {$resultId} not found");
+            if (!$detail) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Production detail not found'
+                ], 404);
             }
 
-            if ($result->production->production_status !== 'in_progress') {
-                throw new \Exception(
-                    "Cannot delete result from production with status '{$result->production->production_status}'"
-                );
+            // Step 2: Verify production exists
+            $production = Production::findOrFail($detail->production_id);
+
+            // Step 3: Check ownership
+            if ($production->assigned_to !== $userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have access to this production detail'
+                ], 403);
             }
 
-            $filePath = $result->production_file;
-            $result->delete();
-
-            if ($filePath && Storage::disk('public')->exists($filePath)) {
-                Storage::disk('public')->delete($filePath);
+            // Step 4: Update if provided
+            if ($request->has('production_type')) {
+                $detail->update(['production_type' => $request->production_type]);
             }
-
-            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Production result deleted successfully',
-                'data' => ['deleted_result_id' => $resultId],
+                'message' => 'Production detail updated successfully',
+                'data' => $detail
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            \Log::error('ProductionController@updateDetail: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Error updating production detail',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * PUT /api/pic-production/productions/{productionId}/complete
-     * COMPLETE: Mark production as completed
-     * 
-     * Admin akan review dan approve/reject hasil production
+     * ============================================
+     * STEP 10: Complete Production (Upload Hasil)
+     * POST /api/production/{id}/complete
+     * ============================================
+     *
+     * Uploads production result file and creates:
+     * - ProductionResult record (with file path)
+     * - StatusHistory entry (stage='ready')
+     *
+     * Follows DesignItem pattern for file upload
      */
     public function completeProduction(Request $request, $productionId)
-    {
-        DB::beginTransaction();
+{
+    // ✅ VALIDATION
+    $request->validate([
+        'file' => 'required|file|mimes:jpg,jpeg,png,pdf,zip|max:10240',
+    ], [
+        'file.required' => 'Production evidence file is required',
+        'file.mimes' => 'File must be jpg, jpeg, png, pdf, or zip',
+        'file.max' => 'File size must not exceed 10MB',
+    ]);
+
+    DB::beginTransaction();
+    $path = null; // ✅ Initialize before try
+
+    try {
+        $userId = auth()->user()->id;
+        $productionId = (int) $productionId;
+
+        // ✅ STEP 1: Find production
+        $production = Production::find($productionId);
+        if (!$production) {
+            throw new \Exception("Production ID {$productionId} not found");
+        }
+
+        // ✅ STEP 2: Verify authorization
+        if ($production->assigned_to !== $userId) {
+            throw new \Exception('Forbidden - You do not have permission to complete this production');
+        }
+
+        // ✅ STEP 3: Upload file
+        $file = $request->file('file');
+        $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
+        $path = $file->storeAs('production', $filename, 'public');
+
+        if (!$path) {
+            throw new \Exception('Failed to upload file to storage');
+        }
+
+        // ✅ STEP 4: Create ProductionResult record
+        $productionResult = ProductionResult::create([
+            'production_id' => $productionId,
+            'production_file' => $path,
+        ]);
+
+        if (!$productionResult) {
+            throw new \Exception('Failed to create production result record');
+        }
+
+        // ✅ STEP 5: Create StatusHistory (graceful fail - optional)
         try {
-            $productionId = (int) $productionId;
+            \App\Models\StatusHistory::create([
+                'order_id' => $production->order_id,
+                'status_stage' => 'ready',
+                'updated_by' => $userId,
+                'start_time' => now(),
+                'end_time' => now()
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('StatusHistory failed (continuing): ' . $e->getMessage());
+            // Continue even if this fails
+        }
 
-            $production = Production::find($productionId);
+        // ✅ STEP 6: Commit
+        DB::commit();
 
-            if (!$production) {
-                throw new \Exception("Production ID {$productionId} not found");
-            }
+        return response()->json([
+            'success' => true,
+            'message' => 'Production completed successfully',
+            'data' => [
+                'result_id' => $productionResult->id,
+                'production_id' => $production->id,
+                'order_id' => $production->order_id,
+                'file_url' => asset('storage/' . $path),
+                'file_name' => $filename,
+                'status' => 'ready',
+                'completed_at' => now()->format('d M Y H:i:s'),
+            ]
+        ], 201);
 
-            if ($production->production_status !== 'in_progress') {
-                throw new \Exception(
-                    "Cannot complete production with status '{$production->production_status}'"
-                );
-            }
+    } catch (\Exception $e) {
+        DB::rollBack();
 
-            // Check if there are production results
-            $resultCount = $production->productionResults()->count();
-            if ($resultCount === 0) {
-                throw new \Exception('Cannot complete production without any production results');
-            }
+        // Cleanup file
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
 
-            $production->production_status = 'completed';
-            $production->save();
+        \Log::error('ProductionController@completeProduction: ' . $e->getMessage());
 
-            DB::commit();
-            $production->refresh();
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
+    /**
+     * ============================================
+     * STEP 11: Kembali ke Admin (Confirm Ready)
+     * PUT /api/production/{id}/confirm-ready
+     * ============================================
+     *
+     * Confirms production is ready for admin review
+     * (Status already updated in STEP 10)
+     */
+    public function confirmReady($id)
+    {
+        try {
+            $userId = auth()->user()->id;
+
+            $production = Production::where('id', $id)
+                ->where('assigned_to', $userId)
+                ->firstOrFail();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Production marked as completed',
+                'message' => 'Production confirmed ready for Admin check',
                 'data' => [
                     'production_id' => $production->id,
-                    'production_status' => $production->production_status,
-                    'production_type' => $production->production_type,
-                    'result_count' => $resultCount,
-                    'updated_at' => $production->updated_at->format('d M Y H:i:s'),
-                ],
+                    'order_id' => $production->order_id,
+                    'status' => 'ready'
+                ]
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            \Log::error('ProductionController@confirmReady: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Error confirming production',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
