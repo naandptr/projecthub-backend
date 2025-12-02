@@ -2,33 +2,35 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Production extends Model
 {
-    use HasFactory;
-
     protected $table = 'productions';
-    protected $fillable = ['order_id', 'assigned_to'];
+    
+    // ✅ ADD THIS - Allow mass assignment
+    protected $fillable = [
+        'order_id',
+        'assigned_to',
+    ];
+    
+    protected $guarded = [];
+
+    public function productionDetails(): HasMany
+    {
+        return $this->hasMany(ProductionDetail::class);
+    }
+
+    // ✅ ADD THIS
+    public function productionResult(): HasOne
+    {
+        return $this->hasOne(ProductionResult::class);
+    }
 
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id', 'id');
-    }
-
-    public function assignedTo()
-    {
-        return $this->belongsTo(User::class, 'assigned_to', 'id');
-    }
-
-    public function productionDetail()
-    {
-        return $this->hasOne(ProductionDetail::class, 'production_id', 'id');
-    }
-
-    public function productionResult()
-    {
-        return $this->hasOne(ProductionResult::class, 'production_id', 'id');
+        return $this->belongsTo(Order::class);
     }
 }
