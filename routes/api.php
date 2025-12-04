@@ -12,6 +12,9 @@ use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ShipmentController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 use App\Http\Controllers\PicProduction\ProductionController as PicProductionProductionController;
+use App\Http\Controllers\PicProduction\VendorDetailController as PicProductionVendorDetailController;
+use App\Http\Controllers\PicProduction\InhouseDetailController;
+
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -90,6 +93,19 @@ Route::middleware('role:production_pic')->prefix('production')->group(function (
     Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
     Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
     Route::put('/{id}/confirm-ready', [PicProductionProductionController::class, 'confirmReady']);
+ 
+   // ✅ INHOUSE Vendor ROUTES
+    Route::post('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'storeVendor']);
+    Route::get('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'getVendor']);
+    Route::put('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'updateVendor']);
+    Route::delete('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'deleteVendor']);
+
+    // ✅ INHOUSE DETAIL ROUTES
+    Route::post('/details/{detailId}/inhouse', [InhouseDetailController::class, 'store']);
+    Route::get('/details/{detailId}/inhouse', [InhouseDetailController::class, 'show']);
+    Route::put('/details/{detailId}/inhouse', [InhouseDetailController::class, 'update']);
+    Route::delete('/details/{detailId}/inhouse', [InhouseDetailController::class, 'destroy']);
+
 });
 
 
