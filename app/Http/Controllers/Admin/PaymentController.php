@@ -56,22 +56,49 @@ class PaymentController extends Controller
     public function store(Request $request, $orderId)
     {
         $request->validate([
-            'payment_type' => 'required|in:down_payment,full_payment',
             'payment_amount' => 'required|numeric|min:1',
             'payment_method' => 'required|in:cash,transfer,qris,card',
         ]);
 
         DB::beginTransaction();
         try {
+            $order = Order::with('payment')->findOrFail($orderId);
+
+            $amount = $order->product_price * $order->product_quantity;
+
+            $totalPaid = $order->payment->sum('payment_amount');
+
+            $remaining = $amount - $totalPaid;
+
+            if ($remaining <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order already fully paid'
+                ], 422);
+            }
+
+            if ($request->payment_amount > $remaining) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment amount exceeds remaining balance'
+                ], 422);
+            }
+
+            if ($request->payment_amount < $remaining) {
+                $paymentType = 'down_payment';
+                $paymentStatus = 'half_paid';
+            } else {
+                $paymentType = 'full_payment';
+                $paymentStatus = 'paid';
+            }
+
             $payment = Payment::create([
-                'order_id' => $orderId,
-                'payment_type' => $request->payment_type,
+                'order_id' => $order->id,
+                'payment_type' => $paymentType,
                 'payment_amount' => $request->payment_amount,
                 'payment_date' => now(),
                 'payment_method' => $request->payment_method,
-                'payment_status' => $request->payment_type == 'full_payment'
-                    ? 'paid'
-                    : 'half_paid',
+                'payment_status' => $paymentStatus,
             ]);
 
             DB::commit();
@@ -79,7 +106,11 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Payment recorded successfully',
-                'data' => $payment
+                'data' => [
+                    'payment' => $payment,
+                    'total_paid' => $totalPaid + $request->payment_amount,
+                    'remaining' => $remaining - $request->payment_amount,
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -94,20 +125,67 @@ class PaymentController extends Controller
     public function update(Request $request, $paymentId)
     {
         $request->validate([
-            'payment_amount' => 'nullable|numeric',
+            'payment_amount' => 'nullable|numeric|min:1',
             'payment_method' => 'nullable|in:cash,transfer,qris,card',
-            'payment_status' => 'nullable|in:half_paid,paid',
         ]);
 
-        $payment = Payment::findOrFail($paymentId);
+        DB::beginTransaction();
+        try {
+            $payment = Payment::with('order.payment')->findOrFail($paymentId);
 
-        $payment->update($request->only(['payment_amount', 'payment_method', 'payment_status']));
+            $order = $payment->order;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment updated successfully',
-            'data' => $payment
-        ]);
+            $amount = $order->product_price * $order->product_quantity;
+
+            $totalPaidExceptThis = $order->payment
+                ->where('id', '!=', $payment->id)
+                ->sum('payment_amount');
+
+            $newPaymentAmount = $request->payment_amount ?? $payment->payment_amount;
+
+            $newTotalPaid = $totalPaidExceptThis + $newPaymentAmount;
+
+            if ($newTotalPaid > $amount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Updated payment causes overpayment'
+                ], 422);
+            }
+
+            if ($newTotalPaid < $amount) {
+                $paymentType = 'down_payment';
+                $paymentStatus = 'half_paid';
+            } else {
+                $paymentType = 'full_payment';
+                $paymentStatus = 'paid';
+            }
+
+            $payment->update([
+                'payment_amount' => $newPaymentAmount,
+                'payment_method' => $request->payment_method ?? $payment->payment_method,
+                'payment_type' => $paymentType,
+                'payment_status' => $paymentStatus,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment updated successfully',
+                'data' => [
+                    'payment' => $payment,
+                    'total_paid' => $newTotalPaid,
+                    'remaining' => $amount - $newTotalPaid,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function destroy($paymentId)
