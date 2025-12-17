@@ -74,8 +74,13 @@ class OrderController extends Controller
         return DB::transaction(function () use ($validated, $request) {
 
             if ($request->hasFile('order_file')) {
-                $validated['order_file'] = $request->file('order_file')
-                    ->store('orders', 'public');
+                $file = $request->file('order_file');
+
+                if (str_starts_with($file->getMimeType(), 'image/')) {
+                    $validated['order_file'] = Order::compressAndStoreImage($file);
+                } else {
+                    $validated['order_file'] = $file->store('orders', 'public');
+                }
             }
 
             $validated['order_number'] = Order::generateOrderNumber();
@@ -138,6 +143,21 @@ class OrderController extends Controller
             'assigned_to_production' => 'nullable|exists:users,id',
         ]);
 
+        if ($request->hasFile('order_file')) {
+
+            if ($order->order_file && Storage::disk('public')->exists($order->order_file)) {
+                Storage::disk('public')->delete($order->order_file);
+            }
+
+            $file = $request->file('order_file');
+
+            if (str_starts_with($file->getMimeType(), 'image/')) {
+                $order->order_file = Order::compressAndStoreImage($file);
+            } else {
+                $order->order_file = $file->store('orders', 'public');
+            }
+        }
+
         $order->update($request->only([
             'cust_name',
             'cust_phone',
@@ -148,17 +168,16 @@ class OrderController extends Controller
             'product_quantity',
             'product_price',
             'order_notes',
-            'order_file'
         ]));
 
-        if ($request->assigned_to_design !== null) {
+        if ($request->filled('assigned_to_design')) {
             $order->design()->updateOrCreate(
                 ['order_id' => $order->id],
                 ['assigned_to' => $request->assigned_to_design]
             );
         }
 
-        if ($request->assigned_to_production !== null) {
+        if ($request->filled('assigned_to_production')) {
             $order->production()->updateOrCreate(
                 ['order_id' => $order->id],
                 ['assigned_to' => $request->assigned_to_production]
@@ -168,7 +187,7 @@ class OrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Order updated successfully',
-            'data' => $order->load(['design', 'production']),
+            'data' => $order->load(['design.assignedTo', 'production.assignedTo']),
         ]);
     }
 
@@ -176,13 +195,26 @@ class OrderController extends Controller
     {
         $order = Order::findOrFail($orderId);
 
-        if ($order->order_file && Storage::disk('public')->exists($order->order_file)) {
+        $orderDelete = StatusHistory::where('order_id', $order->id)
+            ->where('status_stage', 'confirmed')
+            ->first();
+
+        if (!$orderDelete) {
+            if ($order->order_file && Storage::disk('public')->exists($order->order_file)) {
             Storage::disk('public')->delete($order->order_file);
+            }
+
+            $order->delete();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Order deleted successfully'
+            ]);
         }
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'Order deleted successfully'
-        ]);
+                'status' => 'error',
+                'message' => 'Cannot delete confirmed design!'
+        ], 400);
     }
 }
