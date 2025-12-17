@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Intervention\Image\ImageManagerStatic as Image;
+use Illuminate\Support\Facades\Storage;
 
 class Order extends Model
 {
@@ -17,7 +19,7 @@ class Order extends Model
     public static function generateOrderNumber()
     {
         $prefix = "HY-";
-        $date = now()->format('dmY'); 
+        $date = now()->format('dmy'); 
 
         $lastOrder = self::whereDate('created_at', today())
             ->orderBy('id', 'desc')
@@ -30,6 +32,23 @@ class Order extends Model
         $counter = str_pad($next, 5, '0', STR_PAD_LEFT);
 
         return $prefix . $date . "-" . $counter;
+    }
+
+    public static function compressAndStoreImage($file)
+    {
+        $image = Image::make($file)
+            ->orientate()
+            ->resize(1600, 1600, function ($constraint) {
+                $constraint->aspectRatio();
+                $constraint->upsize();
+            })
+            ->encode('jpg', 60);
+
+        $filename = 'orders/' . uniqid() . '.jpg';
+
+        Storage::disk('public')->put($filename, $image);
+
+        return $filename;
     }
 
     public function createdBy()

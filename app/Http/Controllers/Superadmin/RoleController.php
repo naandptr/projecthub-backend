@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Superadmin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Role;
+use App\Models\Role; 
+use App\Models\User;
 
 class RoleController extends Controller
 {
@@ -20,6 +21,15 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
+        $existsRole = Role::where('role_name', $request->role_name)->exists();
+
+        if ($existsRole) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Role name already in use!'
+            ], 400);
+        }
+        
         $request->validate([
             'role_name' => 'required|string|max:255|unique:roles,role_name'
         ]);
@@ -40,24 +50,24 @@ class RoleController extends Controller
 
     public function update(Request $request, $roleId)
     {
-        $role = Role::find($roleId);
+        $existsRole = Role::where('role_name', $request->role_name)
+        ->where('id', '!=', $roleId)
+        ->exists();
 
-        if (!$role) {
+        if ($existsRole) {
             return response()->json([
                 'success' => false,
-                'message' => 'Role not found'
-            ], 404);
+                'message' => 'Role name already in use!'
+            ], 400);
         }
 
         $request->validate([
-            'role_name' => 'required|string|max:255|unique:roles,role_name'
+            'role_name' => 'required|string|max:255|unique:roles,role_name,' . $roleId
         ]);
 
-        $update = [];
+        $role = Role::findOrFail($roleId);
 
-        if ($request->has('role_name')) $update['role_name'] = $request->role_name;
-
-        $role->update($update);
+        $role->update($request->all());
 
         return response()->json([
             'success' => true,
@@ -68,13 +78,22 @@ class RoleController extends Controller
 
     public function destroy($roleId)
     {
-        $role = Role::find($roleId);
+        $role = Role::findorFail($roleId);
 
         if (!$role) {
             return response()->json([
                 'success' => false,
                 'message' => 'Role not found'
             ], 404);
+        }
+
+        if (
+            User::where('role_id', $role->id)->exists()
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Role is used in other data!'
+            ], 400);
         }
 
         $role->delete();

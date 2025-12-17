@@ -17,18 +17,6 @@ class SpkController extends Controller
             'order_ids.*' => 'exists:orders,id',
         ]);
 
-        $pic = User::whereHas('role', function ($q) {
-                $q->where('role_name', 'production_pic');
-            })
-            ->where('user_status', 'Active')
-            ->first();
-
-        if (!$pic) {
-            return response()->json([
-                'message' => "No active production PIC!"
-            ], 400);
-        }
-
         $validatedOrders = [];
 
         foreach ($request->order_ids as $orderId) {
@@ -62,7 +50,6 @@ class SpkController extends Controller
         $spk = Spk::create([
             'spk_number' => Spk::generateSpkNumber(),
             'spk_date'   => now(),
-            'assigned_to'=> $pic->id
         ]);
 
         $spk->orders()->attach($validatedOrders);
