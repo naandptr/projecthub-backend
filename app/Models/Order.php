@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Intervention\Image\ImageManagerStatic as Image;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class Order extends Model
 {
@@ -34,19 +36,20 @@ class Order extends Model
         return $prefix . $date . "-" . $counter;
     }
 
-    public static function compressAndStoreImage($file)
+    public static function compressAndStoreImage(UploadedFile $file): string
     {
-        $image = Image::make($file)
-            ->orientate()
-            ->resize(1600, 1600, function ($constraint) {
-                $constraint->aspectRatio();
-                $constraint->upsize();
-            })
-            ->encode('jpg', 60);
+        $manager = new ImageManager(new Driver());
+
+        $image = $manager->read($file->getPathname());
+
+        $image->scaleDown(width: 1280);
 
         $filename = 'orders/' . uniqid() . '.jpg';
 
-        Storage::disk('public')->put($filename, $image);
+        Storage::disk('public')->put(
+            $filename,
+            (string) $image->toJpeg(60)
+        );
 
         return $filename;
     }
