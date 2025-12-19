@@ -19,6 +19,6 @@ class ProductionResult extends Model
 
     public function production(): BelongsTo
     {
-        return $this->belongsTo(Production::class);
+        return $this->belongsTo(Production::class, 'production_id', 'id');
     }
 }
