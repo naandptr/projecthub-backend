@@ -217,4 +217,29 @@ class OrderController extends Controller
                 'message' => 'Cannot delete confirmed design!'
         ], 400);
     }
+
+    public function completed()
+    {
+        $orders = Order::with([
+            'shipment',
+            'latestStatus'
+        ])
+        ->whereHas('latestStatus', function ($q) {
+            $q->where('status_stage', 'completed');
+        })
+        ->get();
+
+        if ($orders->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No orders completed yet!'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'List of completed orders',
+            'data' => $orders
+        ]);
+    }
 }

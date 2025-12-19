@@ -54,6 +54,11 @@ class Order extends Model
         return $filename;
     }
 
+    public function latestStatus()
+    {
+        return $this->hasOne(StatusHistory::class)->latestOfMany();
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
