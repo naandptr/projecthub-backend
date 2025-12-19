@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ProductionDetail extends Model
 {
@@ -22,6 +23,16 @@ class ProductionDetail extends Model
      */
     public function production(): BelongsTo
     {
-        return $this->belongsTo(Production::class);
+        return $this->belongsTo(Production::class, 'production_id', 'id');
+    }
+
+    public function inHouseDetail(): HasOne
+    {
+        return $this->hasOne(InHouseDetail::class, 'production_detail_id', 'id');
+    }
+
+    public function vendorDetail(): HasOne
+    {
+        return $this->hasOne(VendorDetail::class, 'production_detail_id', 'id');
     }
 }

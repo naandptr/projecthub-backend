@@ -20,17 +20,21 @@ class Production extends Model
 
     public function productionDetails(): HasMany
     {
-        return $this->hasMany(ProductionDetail::class);
+        return $this->hasMany(ProductionDetail::class, 'production_id', 'id');
     }
 
-    // ✅ ADD THIS
     public function productionResult(): HasOne
     {
-        return $this->hasOne(ProductionResult::class);
+        return $this->hasOne(ProductionResult::class, 'production_id', 'id');
     }
 
     public function order()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class, 'order_id', 'id');
+    }
+
+    public function assignedTo()
+    {
+        return $this->belongsTo(User::class, 'assigned_to', 'id');
     }
 }

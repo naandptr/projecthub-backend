@@ -15,7 +15,6 @@ use App\Http\Controllers\Admin\ShipmentController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 use App\Http\Controllers\PicProduction\ProductionController as PicProductionProductionController;
 
-
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->get('/whoami', fn(Request $r) => $r->user());
@@ -66,6 +65,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // PRODUCTION
         Route::get('/productions', [AdminProductionController::class, 'index']);
+        Route::get('/productions/{productionId}', [AdminProductionController::class, 'show']);
+        Route::post('/productions/{productionId}/confirm', [AdminProductionController::class, 'confirmProduction']);
 
         // PAYMENT 
         Route::get('/payments', [PaymentController::class, 'index']);
@@ -94,18 +95,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });
 
-// ==== PRODUCTION PIC ROUTES ====
-Route::middleware('role:production_pic')->prefix('production')->group(function () {
-    Route::get('/tasks', [PicProductionProductionController::class, 'index']);
-    Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
-    Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
-    Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
-    Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
-    Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
-    Route::put('/{id}/confirm-ready', [PicProductionProductionController::class, 'confirmReady']);
-});
-
-
-
-    
+    // ==== PRODUCTION PIC ROUTES ====
+    Route::middleware('role:production_pic')->prefix('production')->group(function () {
+        Route::get('/tasks', [PicProductionProductionController::class, 'index']);
+        Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
+        Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
+        Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
+        Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
+        Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
+        Route::put('/{id}/confirm-ready', [PicProductionProductionController::class, 'confirmReady']);
+    });
 });
