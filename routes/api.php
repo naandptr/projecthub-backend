@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders/{orderId}', [OrderController::class, 'show']);
         Route::put('/orders/{orderId}', [OrderController::class, 'update']);
         Route::delete('/orders/{orderId}', [OrderController::class, 'destroy']);
+        Route::get('/completed', [OrderController::class, 'completed']);
         
         // DESIGN
         Route::get('/designs', [AdminDesignController::class, 'index']);
