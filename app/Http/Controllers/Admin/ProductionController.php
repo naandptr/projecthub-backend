@@ -55,6 +55,17 @@ class ProductionController extends Controller
             ], 400);
         }
 
+        $alreadyConfirmed = StatusHistory::where('order_id', $production->order_id)
+            ->where('status_stage', 'ready')
+            ->exists();
+
+        if ($alreadyConfirmed) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Production confirmation has been done!'
+            ], 400);
+        }
+
         DB::transaction(function () use ($production) {
             StatusHistory::where('order_id', $production->order_id)
                 ->whereNull('end_time')
