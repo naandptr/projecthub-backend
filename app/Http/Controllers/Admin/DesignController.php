@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Design;
 use App\Models\DesignItem;
 use App\Models\StatusHistory;
@@ -45,7 +46,7 @@ class DesignController extends Controller
     public function updateItemStatus(Request $request, $itemId)
     {
         $request->validate([
-            'design_status' => 'required|in:approved,rejected'
+            'design_status' => 'required|in:approved,revision'
         ]);
 
         $item = DesignItem::findOrFail($itemId);
@@ -80,7 +81,7 @@ class DesignController extends Controller
 
         $approvedItem = DesignItem::where('design_id', $design->id)
             ->where('design_status', 'approved')
-            ->first();
+            ->exists();
 
         if (!$approvedItem) {
             return response()->json([
@@ -89,7 +90,19 @@ class DesignController extends Controller
             ], 400);
         }
 
+        $alreadyConfirmed = StatusHistory::where('order_id', $design->order_id)
+            ->where('status_stage', 'confirmed')
+            ->exists();
+
+        if ($alreadyConfirmed) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Design confirmation has been done!'
+            ], 400);
+        }
+
         DB::transaction(function () use ($design) {
+
             StatusHistory::where('order_id', $design->order_id)
                 ->whereNull('end_time')
                 ->update([
@@ -99,7 +112,7 @@ class DesignController extends Controller
             StatusHistory::create([
                 'order_id' => $design->order_id,
                 'status_stage' => 'confirmed',
-                'updated_by' => Auth::id(),
+                'updated_by' => auth()->id(),
                 'start_time' => now(),
                 'end_time' => null
             ]);
