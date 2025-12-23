@@ -33,7 +33,7 @@ class ShipmentController extends Controller
 
     public function store(Request $request, $orderId)
     {
-        $order = Order::findorFail($orderId);
+        $order = Order::findOrFail($orderId);
 
         $request->validate([
             'service_type' => 'required|in:delivery,pickup',

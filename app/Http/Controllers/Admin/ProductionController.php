@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Order;
 use App\Models\Production;
 use App\Models\ProductionResult;
 use App\Models\StatusHistory;
@@ -14,8 +15,12 @@ class ProductionController extends Controller
 {
     public function index()
     {
-        $productions = Production::with(['order', 'assignedTo', 'order.statusHistory'])->get();
-
+        $productions = Production::with(['order', 'assignedTo', 'order.statusHistory'])
+            ->whereHas('order.statusHistory', function ($q) {
+                $q->where('status_stage', 'confirmed');
+            })
+            ->get();
+        
         return response()->json([
             'status' => 'success',
             'message' => 'List of productions',
@@ -52,6 +57,17 @@ class ProductionController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Cannot confirm production - no production result found'
+            ], 400);
+        }
+
+        $alreadyConfirmed = StatusHistory::where('order_id', $production->order_id)
+            ->where('status_stage', 'ready')
+            ->exists();
+
+        if ($alreadyConfirmed) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Production confirmation has been done!'
             ], 400);
         }
 

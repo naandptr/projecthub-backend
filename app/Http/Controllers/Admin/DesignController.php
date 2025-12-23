@@ -14,11 +14,14 @@ class DesignController extends Controller
 {
     public function index()
     {
-        $designs = Design::with(['order', 'assignedTo', 'order.statusHistory'])->get();
+        $designs = Design::with(['order', 'assignedTo', 'order.statusHistory'])
+            ->whereHas('order.statusHistory', function ($q) {
+                $q->where('status_stage', 'designing');
+            })
+            ->get();
 
         return response()->json([
             'status' => 'success',
-            'message' => 'List of designs',
             'data' => $designs
         ]);
     }
@@ -45,15 +48,23 @@ class DesignController extends Controller
     public function updateItemStatus(Request $request, $itemId)
     {
         $request->validate([
-            'design_status' => 'required|in:approved,rejected'
+            'design_status' => 'required|in:approved,revision'
         ]);
 
         $item = DesignItem::findOrFail($itemId);
 
+        if(!$item) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Design item not found!'
+            ], 400);
+        }
+
         if ($request->design_status === 'approved') {
             $alreadyApproved = DesignItem::where('design_id', $item->design_id)
                 ->where('design_status', 'approved')
-                ->first();
+                ->where('id', '!=', $item->id)
+                ->exists();
 
             if ($alreadyApproved) {
                 return response()->json([
@@ -86,6 +97,17 @@ class DesignController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Cannot confirm design - no approved design item found'
+            ], 400);
+        }
+
+        $alreadyConfirmed = StatusHistory::where('order_id', $design->order_id)
+            ->where('status_stage', 'confirmed')
+            ->exists();
+
+        if ($alreadyConfirmed) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Design confirmation has been done!'
             ], 400);
         }
 
