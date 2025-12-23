@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Order;
 use App\Models\Production;
 use App\Models\ProductionResult;
 use App\Models\StatusHistory;
@@ -14,8 +15,12 @@ class ProductionController extends Controller
 {
     public function index()
     {
-        $productions = Production::with(['order', 'assignedTo', 'order.statusHistory'])->get();
-
+        $productions = Production::with(['order', 'assignedTo', 'order.statusHistory'])
+            ->whereHas('order.statusHistory', function ($q) {
+                $q->where('status_stage', 'confirmed');
+            })
+            ->get();
+        
         return response()->json([
             'status' => 'success',
             'message' => 'List of productions',
