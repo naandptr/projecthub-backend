@@ -21,7 +21,7 @@ class SpkController extends Controller
 
         foreach ($request->order_ids as $orderId) {
 
-            $order = Order::with(['design.designItem', 'statusHistory'])->find($orderId);
+            $order = Order::with(['design.designItems', 'statusHistory'])->find($orderId);
 
             if (!$order) continue;
 
