@@ -18,6 +18,7 @@ use App\Http\Controllers\PicProduction\VendorDetailController as PicProductionVe
 use App\Http\Controllers\PicProduction\InhouseDetailController;
 
 
+
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->get('/whoami', fn(Request $r) => $r->user());
@@ -99,14 +100,40 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });
 
-    // ==== PRODUCTION PIC ROUTES ====
+
     Route::middleware('role:production_pic')->prefix('production')->group(function () {
-        Route::get('/tasks', [PicProductionProductionController::class, 'index']);
-        Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
-        Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
-        Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
-        Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
-        Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
-        Route::put('/{id}/confirm-ready', [PicProductionProductionController::class, 'confirmReady']);
-    });
+    
+    // GET all tasks
+    Route::get('/tasks', [PicProductionProductionController::class, 'index']);
+    
+    // GET filter tasks (MUST BE BEFORE {id} ROUTE)
+    Route::get('/tasks/filter', [PicProductionProductionController::class, 'indexWithFilter']);
+    
+    // GET single task by ID
+    Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
+    
+    // Start production
+    Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
+    
+    // Production details
+    Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
+    Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
+    
+    // Complete & confirm
+    Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
+    Route::put('/{id}/confirm-ready', [PicProductionProductionController::class, 'confirmReady']);
+    
+    // Vendor details
+    Route::post('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'storeVendor']);
+    Route::get('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'getVendor']);
+    Route::put('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'updateVendor']);
+    Route::delete('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'deleteVendor']);
+    
+    // Inhouse details
+    Route::post('/details/{detailId}/inhouse', [InhouseDetailController::class, 'store']);
+    Route::get('/details/{detailId}/inhouse', [InhouseDetailController::class, 'show']);
+    Route::put('/details/{detailId}/inhouse', [InhouseDetailController::class, 'update']);
+    Route::delete('/details/{detailId}/inhouse', [InhouseDetailController::class, 'destroy']);
+});
+
 });
