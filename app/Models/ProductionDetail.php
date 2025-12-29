@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductionDetail extends Model
 {
@@ -13,34 +14,46 @@ class ProductionDetail extends Model
 
     protected $table = 'production_details';
 
-    /**
-     * ✅ Allow mass assignment for these fields
-     */
     protected $fillable = [
-        'production_id',      // Foreign key to productions
-        'production_type',    // Either 'in_house' or 'vendor'
+        'production_id',
+        'production_type',
     ];
 
     /**
-     * Get the production that owns this production detail
-     * 
-     * Relationship: One production detail belongs to ONE production
-     * When production is deleted: production_detail is deleted
-     * 
-     * @return BelongsTo
+     * Detail milik satu Production.
      */
     public function production(): BelongsTo
     {
         return $this->belongsTo(Production::class, 'production_id', 'id');
     }
 
+    /**
+     * Detail in-house (jika production_type = 'in_house').
+     */
     public function inHouseDetail(): HasOne
     {
         return $this->hasOne(InHouseDetail::class, 'production_detail_id', 'id');
     }
 
+    /**
+     * Detail vendor (jika production_type = 'vendor').
+     */
     public function vendorDetail(): HasOne
     {
         return $this->hasOne(VendorDetail::class, 'production_detail_id', 'id');
+    }
+
+    /**
+     
+     * Catatan:
+     * - Tabel production_results hanya punya FK ke productions (production_id),
+     *   bukan ke production_details.
+     * - Karena itu kita pakai:
+     *   foreign key  = production_id (di production_results)
+     *   local key    = production_id (di production_details)
+     */
+    public function productionResults(): HasMany
+    {
+        return $this->hasMany(ProductionResult::class, 'production_id', 'production_id');
     }
 }
