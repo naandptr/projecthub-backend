@@ -138,7 +138,7 @@ class UserController extends Controller
 
     public function resetPassword($userId)
     {
-        $user = User::findorFail($userId);
+        $user = User::findOrFail($userId);
 
         if (!$user) {
             return response()->json([
@@ -163,7 +163,7 @@ class UserController extends Controller
 
     public function destroy($userId)
     {
-        $user = User::findorFail($userId);
+        $user = User::findOrFail($userId);
 
         if (!$user) {
             return response()->json([
