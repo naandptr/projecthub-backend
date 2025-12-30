@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Superadmin\RoleController;
 use App\Http\Controllers\Superadmin\UserController as SuperadminUserController;
+use App\Http\Controllers\Superadmin\ProgressTrackController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\DesignController as AdminDesignController;
@@ -46,6 +47,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/users/{userId}', [SuperadminUserController::class, 'update']);
         Route::put('/users/{userId}/reset-password', [SuperadminUserController::class, 'resetPassword']);
         Route::delete('/users/{userId}', [SuperadminUserController::class, 'destroy']);
+
+        // PROGRESS TRACK
+        Route::get('/progress', [ProgressTrackController::class, 'index']);
     });
 
     // ==== ADMIN ROUTES ====

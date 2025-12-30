@@ -78,7 +78,7 @@ class RoleController extends Controller
 
     public function destroy($roleId)
     {
-        $role = Role::findorFail($roleId);
+        $role = Role::findOrFail($roleId);
 
         if (!$role) {
             return response()->json([
