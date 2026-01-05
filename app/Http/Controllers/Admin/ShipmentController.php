@@ -19,13 +19,13 @@ class ShipmentController extends Controller
 
         if (!$shipment) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Shipment not found'
             ], 404);
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Shipment details',
             'data' => $shipment
         ]);

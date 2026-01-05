@@ -22,7 +22,7 @@ class DesignController extends Controller
             ->get();
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'data' => $designs
         ]);
     }
@@ -34,13 +34,13 @@ class DesignController extends Controller
 
         if (!$design) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Design not found'
             ], 404);
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Design details',
             'data' => $design
         ]);
@@ -56,7 +56,7 @@ class DesignController extends Controller
 
         if(!$item) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Design item not found!'
             ], 400);
         }
@@ -69,7 +69,7 @@ class DesignController extends Controller
 
             if ($alreadyApproved) {
                 return response()->json([
-                    'status' => 'error',
+                    'success' => false,
                     'message' => 'Only one design item can be approved'
                 ], 400);
             }
@@ -80,7 +80,7 @@ class DesignController extends Controller
         ]);
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Design item updated',
             'data' => $item
         ]);
@@ -96,7 +96,7 @@ class DesignController extends Controller
 
         if (!$approvedItem) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Cannot confirm design - no approved design item found'
             ], 400);
         }
@@ -107,13 +107,12 @@ class DesignController extends Controller
 
         if ($alreadyConfirmed) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Design confirmation has been done!'
             ], 400);
         }
 
         DB::transaction(function () use ($design) {
-
             StatusHistory::where('order_id', $design->order_id)
                 ->whereNull('end_time')
                 ->update([
@@ -130,7 +129,7 @@ class DesignController extends Controller
         });
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Design confirmed successfully'
         ]);
     }
