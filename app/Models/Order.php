@@ -59,6 +59,11 @@ class Order extends Model
         return $this->hasOne(StatusHistory::class)->latestOfMany();
     }
 
+    public function latestPayment()
+    {
+        return $this->hasOne(Payment::class)->latestOfMany();
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
