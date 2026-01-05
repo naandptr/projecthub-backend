@@ -112,6 +112,8 @@ class DesignController extends Controller
                         'product_quantity' => $order->product_quantity,
                         'order_date' => $order->order_date,
                         'order_deadline' => $order->order_deadline,
+                        'order_file_url' => asset('storage/' . $order->order_file),
+                        'order_file_name' => basename($order->order_file),
                         'order_notes' => $order->order_notes,
                         'created_by' => $order->createdBy?->full_name,
                         'created_at' => $order->created_at->format('d M Y H:i:s'),
