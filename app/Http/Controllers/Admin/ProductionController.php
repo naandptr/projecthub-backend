@@ -17,7 +17,7 @@ class ProductionController extends Controller
     {
         $productions = Production::with(['order', 'assignedTo', 'order.statusHistory'])
             ->whereHas('order.statusHistory', function ($q) {
-                $q->where('status_stage', 'confirmed');
+                $q->where('status_stage', 'in_production');
             })
             ->get();
         
@@ -30,7 +30,7 @@ class ProductionController extends Controller
 
     public function show($productionId)
     {
-        $production = Production::with(['order', 'assignedTo', 'productionDetails', 'productionDetails.inHouseDetail', 'productionDetails.vendorDetail', 'productionResult', 'order.statusHistory'])
+        $production = Production::with(['order', 'assignedTo', 'productionDetails', 'productionDetails.inHouseDetail', 'productionDetails.vendorDetail', 'productionResults', 'order.statusHistory'])
             ->find($productionId);
 
         if (!$production) {
