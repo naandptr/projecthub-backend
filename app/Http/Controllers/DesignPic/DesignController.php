@@ -50,6 +50,8 @@ class DesignController extends Controller
                         'product_quantity' => $design->order->product_quantity,
                         'product_price' => number_format($design->order->product_price, 0, ',', '.'),
                         'deadline' => $design->order->order_deadline,
+                        'order_file_url' => asset('storage/' . $design->order->order_file),
+                        'order_file_name' => basename($design->order->order_file),
                         'current_status' => $latestStatus?->status_stage ?? 'pending',
                         'design_stats' => [
                             'in_progress' => $items->where('design_status', 'in_progress')->count(),
