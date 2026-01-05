@@ -23,7 +23,7 @@ class OrderController extends Controller
         ])->get();
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'List of orders',
             'data' => $orders
         ]);
@@ -41,13 +41,13 @@ class OrderController extends Controller
 
         if (!$order) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Order not found'
             ], 404);
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Order details',
             'data' => $order
         ]);
@@ -185,7 +185,7 @@ class OrderController extends Controller
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Order updated successfully',
             'data' => $order->load(['design.assignedTo', 'production.assignedTo']),
         ]);
@@ -207,13 +207,13 @@ class OrderController extends Controller
             $order->delete();
 
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'Order deleted successfully'
             ]);
         }
 
         return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Cannot delete confirmed design!'
         ], 400);
     }
@@ -231,13 +231,13 @@ class OrderController extends Controller
 
         if ($orders->isEmpty()) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'No orders completed yet!'
             ], 404);
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'List of completed orders',
             'data' => $orders
         ]);

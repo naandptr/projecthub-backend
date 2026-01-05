@@ -22,7 +22,7 @@ class ProductionController extends Controller
             ->get();
         
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'List of productions',
             'data' => $productions
         ]);
@@ -35,13 +35,13 @@ class ProductionController extends Controller
 
         if (!$production) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Production not found'
             ], 404);
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Production details',
             'data' => $production
         ]);
@@ -55,7 +55,7 @@ class ProductionController extends Controller
 
         if (!$existedResult) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Cannot confirm production - no production result found'
             ], 400);
         }
@@ -66,7 +66,7 @@ class ProductionController extends Controller
 
         if ($alreadyConfirmed) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Production confirmation has been done!'
             ], 400);
         }
@@ -88,7 +88,7 @@ class ProductionController extends Controller
         });
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Production confirmed successfully'
         ]);
     }

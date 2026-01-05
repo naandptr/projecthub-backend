@@ -16,14 +16,14 @@ class PaymentController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        $data = $orders->map(function($o) {
+        $data = $orders->map(function($order) {
             return [
-                'order_id' => $o->id,
-                'order_number' => $o->order_number,
-                'customer' => $o->cust_name,
-                'amount' => $o->product_price * $o->product_quantity,
-                'payments' => $o->payment,
-                'shipment' => $o->shipment,
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'customer' => $order->cust_name,
+                'amount' => $order->product_price * $order->product_quantity,
+                'payments' => $order->payment,
+                'shipment' => $order->shipment,
             ];
         });
 
@@ -41,13 +41,13 @@ class PaymentController extends Controller
 
         if (!$payment) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Payment not found'
             ], 404);
         }
 
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'message' => 'Payment details',
             'data' => $payment
         ]);
