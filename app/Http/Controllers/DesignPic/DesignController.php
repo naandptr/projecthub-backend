@@ -9,6 +9,7 @@ use App\Models\DesignItem;
 use App\Models\StatusHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class DesignController extends Controller
 {
@@ -428,7 +429,7 @@ public function updateItem(Request $request, $itemId)
         }
     }
 
-   
+
     public function destroyItem(Request $request, $itemId)
     {
         DB::beginTransaction();
