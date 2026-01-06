@@ -8,31 +8,49 @@ use App\Models\Order;
 
 class TrackOrderController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with([
+        if (!$request->has('order_number') || !$request->order_number) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order number is required',
+            ], 400);
+        }
+
+        $keyword = preg_replace('/[^0-9A-Za-z]/', '', $request->order_number);
+
+        $order = Order::with([
             'payment',
             'latestPayment',
-            'latestStatus'
-        ])->get();
+            'latestStatus',
+            'shipment'
+        ])
+        ->whereRaw("
+            REPLACE(order_number, '-', '') = ?
+        ", [$keyword])
+        ->first();
 
-        $data = $orders->map(function($order) {
-            return [
-                'order_number' => $order->order_number,
-                'customer' => $order->cust_name,
-                'product_name' => $order->product_name,
-                'product_quantity' =>$order->product_quantity,
-                'order_notes' =>$order->order_notes,
-                'order_status' =>$order->latestStatus->status_stage,
-                'payment_status' => $order->latestPayment->payment_status ?? null,
-                'shipment_date' => $order->shipment->shipment_date ?? null,
-            ];
-        });
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order not found',
+            ], 404);
+        }
 
         return response()->json([
-            'status' => true,
-            'message' => 'Order progress list',
-            'data' => $data
+            'success' => true,
+            'message' => 'Order progress detail',
+            'data' => [
+                'order_number'      => $order->order_number,
+                'cust_name'         => $order->cust_name,
+                'product_name'      => $order->product_name,
+                'product_quantity'  => $order->product_quantity,
+                'amount'            => $order->product_price * $order->product_quantity,
+                'order_notes'       => $order->order_notes,
+                'status_stage'      => $order->latestStatus->status_stage ?? 'pending',
+                'payment_status'    => optional($order->latestPayment)->payment_status,
+                'shipment_date'     => optional($order->shipment)->shipment_date,
+            ]
         ]);
     }
 }
