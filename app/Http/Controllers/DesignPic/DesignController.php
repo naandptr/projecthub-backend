@@ -129,7 +129,7 @@ class DesignController extends Controller
                                 'file_url' => asset('storage/' . $item->design_file),
                                 'file_name' => basename($item->design_file),
                                 'notes' => $item->design_notes,
-                                'status' => $item->design_status,
+                                'design_status' => $item->design_status,
                                 'created_at' => $item->created_at->format('d M Y H:i:s'),
                                 'updated_at' => $item->updated_at->format('d M Y H:i:s'),
                             ];
