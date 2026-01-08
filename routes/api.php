@@ -122,25 +122,26 @@ Route::middleware('auth:sanctum')->group(function () {
     // Start production
     Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
     
+      // COMPLETE production
+    Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
+  
+
     // Production details
     Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
     Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
-    
-    // Complete & confirm
-    Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
-    Route::put('/{id}/confirm-ready', [PicProductionProductionController::class, 'confirmReady']);
-    
-    // Vendor details
-    Route::post('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'storeVendor']);
-    Route::get('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'getVendor']);
-    Route::put('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'updateVendor']);
-    Route::delete('/details/{detailId}/vendor', [PicProductionVendorDetailController::class, 'deleteVendor']);
-    
-    // Inhouse details
-    Route::post('/details/{detailId}/inhouse', [InhouseDetailController::class, 'store']);
-    Route::get('/details/{detailId}/inhouse', [InhouseDetailController::class, 'show']);
-    Route::put('/details/{detailId}/inhouse', [InhouseDetailController::class, 'update']);
-    Route::delete('/details/{detailId}/inhouse', [InhouseDetailController::class, 'destroy']);
-});
+    Route::delete('/details/{detailId}', [PicProductionProductionController::class, 'deleteDetail']);
+
+    // PRODUCTION DETAIL INFO (vendor/inhouse - unified)
+     Route::post('/details/{detailId}/info', [PicProductionProductionController::class, 'storeDetailInfo']);
+     Route::get('/details/{detailId}/info', [PicProductionProductionController::class, 'getDetailInfo']);
+     
+     
+     // Production Results (Upload file)
+    Route::post('/details/{detailId}/result', [PicProductionProductionController::class, 'storeResult']);
+    Route::put('/results/{resultId}', [PicProductionProductionController::class, 'updateResult']);
+    Route::delete('/results/{resultId}', [PicProductionProductionController::class, 'deleteResult']);
+    Route::get('/results/{resultId}', [PicProductionProductionController::class, 'getResult']);
+
+   });
 
 });
