@@ -66,6 +66,7 @@ class OrderController extends Controller
             'product_price' => 'required|integer',
             'order_notes' => 'nullable|string',
             'order_file' => 'nullable|file|max:1000',
+            'invoice_url' => 'nullable|string',
 
             'assigned_to_design' => 'nullable|exists:users,id',
             'assigned_to_production' => 'nullable|exists:users,id',
@@ -138,6 +139,7 @@ class OrderController extends Controller
             'product_price' => 'integer',
             'order_notes' => 'string|nullable',
             'order_file' => 'nullable|file|max:1000',
+            'invoice_url' => 'nullable|string',
 
             'assigned_to_design' => 'nullable|exists:users,id',
             'assigned_to_production' => 'nullable|exists:users,id',
