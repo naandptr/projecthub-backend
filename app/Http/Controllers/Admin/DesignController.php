@@ -32,6 +32,7 @@ class DesignController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'List of designs',
             'data' => $data
         ]);
     }
