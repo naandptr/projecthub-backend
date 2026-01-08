@@ -170,6 +170,7 @@ class OrderController extends Controller
             'product_quantity',
             'product_price',
             'order_notes',
+            'invoice_url',
         ]));
 
         if ($request->filled('assigned_to_design')) {
