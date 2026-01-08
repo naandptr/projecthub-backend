@@ -15,18 +15,41 @@ class DesignController extends Controller
 {
     public function index()
     {
-        $designs = Design::with(['order', 'assignedTo', 'order.statusHistory'])
-            ->whereHas('order.statusHistory', function ($q) {
-                $q->where('status_stage', 'designing');
-            })
-            ->get();
+        $designs = Design::with([
+            'order',
+            'assignedTo',
+            'designItems',
+            'order.statusHistory'
+        ])
+        ->whereHas('order.statusHistory', function ($q) {
+            $q->where('status_stage', 'designing');
+        })
+        ->get();
 
-        $data = $designs->map(function($design) {
+        $data = $designs->map(function ($design) {
+
+            // default true
+            $approvalStatus = true;
+
+            if ($design->designItems->isNotEmpty()) {
+
+                // jika ada in_progress maka false
+                if ($design->designItems->contains('design_status', 'in_progress')) {
+                    $approvalStatus = false;
+                }
+
+                // jika ada approved maka true (override)
+                if ($design->designItems->contains('design_status', 'approved')) {
+                    $approvalStatus = true;
+                }
+            }
+
             return [
                 'id' => $design->id,
                 'order_id' => $design->order->id,
                 'assigned_to' => $design->assigned_to,
-                'order' => $design->order
+                'approval_status' => $approvalStatus,
+                'order' => $design->order,
             ];
         });
 
