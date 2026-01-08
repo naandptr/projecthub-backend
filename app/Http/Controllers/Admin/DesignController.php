@@ -21,9 +21,19 @@ class DesignController extends Controller
             })
             ->get();
 
+        $data = $designs->map(function($design) {
+            return [
+                'id' => $design->id,
+                'order_id' => $design->order->id,
+                'assigned_to' => $design->assigned_to,
+                'order' => $design->order
+            ];
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $designs
+            'message' => 'List of designs',
+            'data' => $data
         ]);
     }
 
