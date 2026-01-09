@@ -183,11 +183,18 @@ public function start(Request $request, $orderId)
 
         // Jika belum ada, buat
         if (!$hasDesigning) {
+            StatusHistory::where('order_id', $order->design->order_id)
+                ->whereNull('end_time')
+                ->update([
+                    'end_time' => now()
+            ]);
+                
             StatusHistory::create([
                 'order_id' => $orderId,
                 'status_stage' => 'designing',
-                'updated_by' => $userId,
+                'updated_by' => auth()->id(),
                 'start_time' => now(),
+                'end_time' => null
             ]);
         }
 
