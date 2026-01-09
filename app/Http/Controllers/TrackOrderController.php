@@ -47,6 +47,7 @@ class TrackOrderController extends Controller
                 'product_quantity'  => $order->product_quantity,
                 'amount'            => $order->product_price * $order->product_quantity,
                 'order_notes'       => $order->order_notes,
+                'invoice_url'       => $order->invoice_url,
                 'status_stage'      => $order->latestStatus->status_stage ?? 'pending',
                 'payment_status'    => optional($order->latestPayment)->payment_status,
                 'shipment_date'     => optional($order->shipment)->shipment_date,
