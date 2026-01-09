@@ -22,47 +22,37 @@ class ProductionController extends Controller
      */
     public function index()
     {
-        try {
-            $userId = auth()->id();
+        $productions = Production::with([
+            'order',
+            'assignedTo',
+            'order.statusHistory'
+        ])
+        ->whereHas('order.statusHistory', function ($q) {
+            $q->where('status_stage', 'confirmed');
+        })
+        ->get();
 
-            $productions = Production::where('assigned_to', $userId)
-                ->with([
-                    'order' => function ($q) {
-                        $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 
-                                  'order_date', 'order_deadline', 'product_name', 'product_quantity', 
-                                  'product_price', 'order_file', 'order_notes');
-                    },
-                    'order.statusHistory' => function ($query) {
-                        $query->with('updatedBy:id,username')
-                              ->orderBy('created_at', 'desc');
-                    },
-                    'productionDetails' => function ($q) {
-                        $q->select('id', 'production_id', 'production_type')
-                          ->with(['productionResults', 'vendorDetail', 'inhouseDetail']);
-                    }
-                ])
-                ->select('id', 'order_id', 'assigned_to', 'created_at', 'updated_at')
-                ->orderBy('created_at', 'desc')
-                ->get();
+        $data = $productions->map(function ($production) {
+            return [
+                'id' => $production->id,
+                'order_id' => $production->order->id,
+                'order_number' => $production->order->order_number,
+                'cust_name' => $production->order->cust_name,
+                'product_name' => $production->order->product_name,
+                'product_quantity' => $production->order->product_quantity,
+                'product_price' => number_format($production->order->product_price, 0, ',', '.'),
+                'order_deadline' => $production->order->order_deadline,
+                'order_file_url' => asset('storage/' . $production->order->order_file),
+                'order_file_name' => basename($production->order->order_file),
+                'current_status' => $production->order->latestStatus?->status_stage ?? 'pending',
+            ];
+        });
 
-            $formattedProductions = $productions->map(function ($production) {
-                return $this->formatProductionData($production);
-            });
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Production tasks retrieved successfully',
-                'data' => $formattedProductions,
-                'total' => count($formattedProductions),
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving production tasks',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'List of tasks',
+            'data' => $data
+        ]);
     }
 
     /**
