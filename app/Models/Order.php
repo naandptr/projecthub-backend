@@ -15,7 +15,7 @@ class Order extends Model
 
     protected $table = 'orders';
     protected $primaryKey = 'id';
-    protected $fillable = ['order_number', 'created_by', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes'];
+    protected $fillable = ['order_number', 'created_by', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes', 'invoice_url'];
     public $timestamps = true;
     
     public static function generateOrderNumber()
