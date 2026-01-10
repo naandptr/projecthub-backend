@@ -22,41 +22,102 @@ class ProductionController extends Controller
      */
     public function index()
     {
-        $productions = Production::with([
-            'order',
-            'assignedTo',
-            'order.statusHistory'
-        ])
-        ->whereHas('order.statusHistory', function ($q) {
-            $q->where('status_stage', 'confirmed');
-        })
-        ->get();
+        try {
+            $userId = auth()->id();
 
-        $data = $productions->map(function ($production) {
-            return [
-                'id' => $production->id,
-                'order_id' => $production->order->id,
-                'order_number' => $production->order->order_number,
-                'cust_name' => $production->order->cust_name,
-                'product_name' => $production->order->product_name,
-                'product_quantity' => $production->order->product_quantity,
-                'product_price' => number_format($production->order->product_price, 0, ',', '.'),
-                'order_deadline' => $production->order->order_deadline,
-                'order_file_url' => asset('storage/' . $production->order->order_file),
-                'order_file_name' => basename($production->order->order_file),
-                'current_status' => $production->order->latestStatus?->status_stage ?? 'pending',
-            ];
-        });
+            $productions = Production::where('assigned_to', $userId)
+                ->with([
+                    'order' => function ($q) {
+                        $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes');
+                    },
+                    'order.statusHistory' => function ($query) {
+                        $query->with('updatedBy:id,username')
+                            ->orderBy('created_at', 'desc');
+                    },
+                    'productionDetails' => function ($q) {
+                        $q->select('id', 'production_id', 'production_type')
+                            ->with(['productionResults', 'vendorDetail', 'inhouseDetail']);
+                    }
+                ])
+                ->select('id', 'order_id', 'assigned_to', 'created_at', 'updated_at')
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'List of tasks',
-            'data' => $data
-        ]);
+            $formattedProductions = $productions->map(function ($production) {
+                $latestStatus = $production->order->statusHistory->first();
+                $totalPrice = $production->order->product_quantity * $production->order->product_price;
+
+                return [
+                    'id' => $production->id,
+                    'order_id' => $production->order_id,
+                    'order_number' => $production->order->order_number,
+                    'task_information' => [
+                        'customer_name' => $production->order->cust_name,
+                        'phone_number' => $production->order->cust_phone,
+                        'order_date' => $production->order->order_date,
+                        'product_name' => $production->order->product_name,
+                        'order_quantity' => $production->order->product_quantity . ' pcs',
+                        'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
+                        'deadline' => $production->order->order_deadline,
+                    ],
+                    'order_file' => $production->order->order_file,
+                    'order_notes' => $production->order->order_notes,
+                    'status' => [
+                        'stage' => $latestStatus?->status_stage ?? 'pending',
+                        'started_at' => $latestStatus?->start_time,
+                        'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
+                    ],
+                    'details_count' => $production->productionDetails->count(),
+                    'details' => $production->productionDetails->map(function ($detail) {
+                        $detailData = [
+                            'id' => $detail->id,
+                            'production_type' => $detail->production_type,
+                            'results' => $detail->productionResults->map(function ($result) {
+                                return [
+                                    'id' => $result->id,
+                                    'production_id' => $result->production_id,
+                                    'production_file' => $result->production_file,
+                                    'created_at' => $result->created_at,
+                                ];
+                            }),
+                        ];
+
+                        if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
+                            $detailData['vendor_detail'] = [
+                                'id' => $detail->vendorDetail->id,
+                                'vendor_name' => $detail->vendorDetail->vendor_name,
+                            ];
+                        } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
+                            $detailData['inhouse_detail'] = [
+                                'id' => $detail->inhouseDetail->id,
+                                'start_date' => $detail->inhouseDetail->start_date,
+                                'end_date' => $detail->inhouseDetail->end_date,
+                                'production_budget' => $detail->inhouseDetail->production_budget,
+                            ];
+                        }
+
+                        return $detailData;
+                    })->values(),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Production tasks retrieved successfully',
+                'data' => $formattedProductions,
+                'total' => count($formattedProductions),
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving production tasks',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
-     * Get production tasks with status filter (default: confirmed)
+     * Get production tasks with filter status confirmed
      */
     public function indexWithFilter(Request $request)
     {
@@ -67,21 +128,19 @@ class ProductionController extends Controller
             $productions = Production::where('assigned_to', $userId)
                 ->whereHas('order.statusHistory', function ($q) use ($status) {
                     $q->where('status_stage', $status)
-                      ->whereRaw('id = (SELECT MAX(id) FROM status_history WHERE order_id = orders.id)');
+                        ->whereRaw('id = (SELECT MAX(id) FROM status_history WHERE order_id = orders.id)');
                 }, '=', 1)
                 ->with([
                     'order' => function ($q) {
-                        $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 
-                                  'order_date', 'order_deadline', 'product_name', 'product_quantity', 
-                                  'product_price', 'order_file', 'order_notes');
+                        $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes');
                     },
                     'order.statusHistory' => function ($query) {
                         $query->with('updatedBy:id,username')
-                              ->orderBy('created_at', 'desc');
+                            ->orderBy('created_at', 'desc');
                     },
                     'productionDetails' => function ($q) {
                         $q->select('id', 'production_id', 'production_type')
-                          ->with(['productionResults', 'vendorDetail', 'inhouseDetail']);
+                            ->with('productionResults');
                     }
                 ])
                 ->select('id', 'order_id', 'assigned_to', 'created_at', 'updated_at')
@@ -89,7 +148,45 @@ class ProductionController extends Controller
                 ->get();
 
             $formattedProductions = $productions->map(function ($production) {
-                return $this->formatProductionData($production);
+                $latestStatus = $production->order->statusHistory->first();
+                $totalPrice = $production->order->product_quantity * $production->order->product_price;
+
+                return [
+                    'id' => $production->id,
+                    'order_id' => $production->order_id,
+                    'order_number' => $production->order->order_number,
+                    'task_information' => [
+                        'customer_name' => $production->order->cust_name,
+                        'phone_number' => $production->order->cust_phone,
+                        'order_date' => $production->order->order_date,
+                        'product_name' => $production->order->product_name,
+                        'order_quantity' => $production->order->product_quantity . ' pcs',
+                        'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
+                        'deadline' => $production->order->order_deadline,
+                    ],
+                    'order_file' => $production->order->order_file,
+                    'order_notes' => $production->order->order_notes,
+                    'status' => [
+                        'stage' => $latestStatus?->status_stage ?? 'pending',
+                        'started_at' => $latestStatus?->start_time,
+                        'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
+                    ],
+                    'details_count' => $production->productionDetails->count(),
+                    'details' => $production->productionDetails->map(function ($detail) {
+                        return [
+                            'id' => $detail->id,
+                            'production_type' => $detail->production_type,
+                            'results' => $detail->productionResults->map(function ($result) {
+                                return [
+                                    'id' => $result->id,
+                                    'production_id' => $result->production_id,
+                                    'production_file' => $result->production_file,
+                                    'created_at' => $result->created_at,
+                                ];
+                            }),
+                        ];
+                    })->values(),
+                ];
             });
 
             return response()->json([
@@ -99,7 +196,6 @@ class ProductionController extends Controller
                 'total' => count($formattedProductions),
                 'filter' => $status,
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -117,30 +213,95 @@ class ProductionController extends Controller
         try {
             $production = Production::with([
                 'order' => function ($q) {
-                    $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 
-                              'order_date', 'order_deadline', 'product_name', 'product_quantity', 
-                              'product_price', 'order_file', 'order_notes');
+                    $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes');
                 },
                 'order.statusHistory' => function ($query) {
                     $query->with('updatedBy:id,username')
-                          ->orderBy('created_at', 'desc');
+                        ->orderBy('created_at', 'desc');
                 },
                 'productionDetails' => function ($q) {
                     $q->select('id', 'production_id', 'production_type')
-                      ->with(['productionResults', 'vendorDetail', 'inhouseDetail']);
+                        ->with(['productionResults', 'vendorDetail', 'inhouseDetail']);
                 }
             ])
-            ->select('id', 'order_id', 'assigned_to', 'created_at', 'updated_at')
-            ->findOrFail($id);
+                ->select('id', 'order_id', 'assigned_to', 'created_at', 'updated_at')
+                ->findOrFail($id);
 
-            $formattedProduction = $this->formatProductionData($production, true);
+            $latestStatus = $production->order->statusHistory->first();
+            $totalPrice = $production->order->product_quantity * $production->order->product_price;
+
+            $formattedProduction = [
+                'id' => $production->id,
+                'order_id' => $production->order_id,
+                'order_number' => $production->order->order_number,
+                'task_information' => [
+                    'customer_name' => $production->order->cust_name,
+                    'phone_number' => $production->order->cust_phone,
+                    'address' => $production->order->cust_address,
+                    'order_date' => $production->order->order_date,
+                    'product_name' => $production->order->product_name,
+                    'order_quantity' => $production->order->product_quantity . ' pcs',
+                    'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
+                    'deadline' => $production->order->order_deadline,
+                ],
+                'order_file' => $production->order->order_file,
+                'order_notes' => $production->order->order_notes,
+                'status' => [
+                    'stage' => $latestStatus?->status_stage ?? 'pending',
+                    'started_at' => $latestStatus?->start_time,
+                    'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
+                ],
+                'status_timeline' => $production->order->statusHistory->map(function ($status) {
+                    return [
+                        'id' => $status->id,
+                        'stage' => $status->status_stage,
+                        'start_time' => $status->start_time,
+                        'end_time' => $status->end_time,
+                        'duration_minutes' => $status->end_time && $status->start_time
+                            ? $status->end_time->diffInMinutes($status->start_time)
+                            : null,
+                        'updated_by' => $status->updatedBy?->username,
+                        'created_at' => $status->created_at,
+                    ];
+                }),
+                'details_count' => $production->productionDetails->count(),
+                'details' => $production->productionDetails->map(function ($detail) {
+                    $detailData = [
+                        'id' => $detail->id,
+                        'production_type' => $detail->production_type,
+                        'results' => $detail->productionResults->map(function ($result) {
+                            return [
+                                'id' => $result->id,
+                                'production_id' => $result->production_id,
+                                'production_file' => $result->production_file,
+                                'created_at' => $result->created_at,
+                            ];
+                        }),
+                    ];
+
+                    if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
+                        $detailData['vendor_detail'] = [
+                            'id' => $detail->vendorDetail->id,
+                            'vendor_name' => $detail->vendorDetail->vendor_name,
+                        ];
+                    } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
+                        $detailData['inhouse_detail'] = [
+                            'id' => $detail->inhouseDetail->id,
+                            'start_date' => $detail->inhouseDetail->start_date,
+                            'end_date' => $detail->inhouseDetail->end_date,
+                            'production_budget' => $detail->inhouseDetail->production_budget,
+                        ];
+                    }
+
+                    return $detailData;
+                })->values(),
+            ];
 
             return response()->json([
                 'success' => true,
                 'message' => 'Production task retrieved successfully',
                 'data' => $formattedProduction,
             ], 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
@@ -156,12 +317,7 @@ class ProductionController extends Controller
     }
 
     /**
-     * REVISI: Start production - Assign dan return full task data
-     * 
-     * Flow:
-     * 1. If tidak di-assign → assign ke current user + create status history
-     * 2. If sudah di-assign ke current user → return data (continue)
-     * 3. If sudah di-assign ke user lain → throw error
+     * Start production
      */
     public function startProduction(Request $request, $id)
     {
@@ -171,42 +327,103 @@ class ProductionController extends Controller
             $production = Production::findOrFail($id);
             $order = Order::findOrFail($production->order_id);
 
-            // Check if already assigned to another user
             if ($production->assigned_to !== null && $production->assigned_to !== $userId) {
                 throw new \Exception('This production task is already assigned to another user');
             }
 
-            // If not assigned, assign and create status history
-            if ($production->assigned_to !== $userId) {
+            if ($production->assigned_to === $userId) {
+                $production = $production->fresh(['order', 'productionDetails.productionResults', 'productionDetails.vendorDetail', 'productionDetails.inhouseDetail', 'order.statusHistory.updatedBy']);
+            } else {
                 $production->update(['assigned_to' => $userId]);
 
-                // End previous status
                 $previousStatus = $order->statusHistory()->latest('created_at')->first();
+
                 if ($previousStatus) {
                     $previousStatus->update(['end_time' => now()]);
                 }
 
-                // Create new status
                 StatusHistory::create([
                     'order_id' => $order->id,
                     'status_stage' => 'in_production',
                     'updated_by' => $userId,
                     'start_time' => now(),
                 ]);
+
+                $production = $production->fresh(['order', 'productionDetails.productionResults', 'productionDetails.vendorDetail', 'productionDetails.inhouseDetail', 'order.statusHistory.updatedBy']);
             }
 
-            // Load fresh data
-            $production = $production->fresh([
-                'order',
-                'order.statusHistory.updatedBy',
-                'productionDetails.productionResults',
-                'productionDetails.vendorDetail',
-                'productionDetails.inhouseDetail'
-            ]);
+            $latestStatus = $production->order->statusHistory->first();
+            $totalPrice = $production->order->product_quantity * $production->order->product_price;
 
-            // Format response
-            $formattedProduction = $this->formatProductionData($production, true);
-            $formattedProduction['assigned_to'] = $production->assigned_to;
+            $formattedProduction = [
+                'id' => $production->id,
+                'order_id' => $production->order_id,
+                'order_number' => $production->order->order_number,
+                'task_information' => [
+                    'customer_name' => $production->order->cust_name,
+                    'phone_number' => $production->order->cust_phone,
+                    'address' => $production->order->cust_address,
+                    'order_date' => $production->order->order_date,
+                    'product_name' => $production->order->product_name,
+                    'order_quantity' => $production->order->product_quantity . ' pcs',
+                    'product_price' => 'Rp ' . number_format($production->order->product_price, 0, ',', '.'),
+                    'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
+                    'deadline' => $production->order->order_deadline,
+                ],
+                'order_file' => $production->order->order_file,
+                'order_notes' => $production->order->order_notes,
+                'status' => [
+                    'stage' => $latestStatus?->status_stage ?? 'pending',
+                    'started_at' => $latestStatus?->start_time,
+                    'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
+                ],
+                'status_timeline' => $production->order->statusHistory->map(function ($status) {
+                    return [
+                        'id' => $status->id,
+                        'stage' => $status->status_stage,
+                        'start_time' => $status->start_time,
+                        'end_time' => $status->end_time,
+                        'duration_minutes' => $status->end_time && $status->start_time
+                            ? $status->end_time->diffInMinutes($status->start_time)
+                            : null,
+                        'updated_by' => $status->updatedBy?->username,
+                        'created_at' => $status->created_at,
+                    ];
+                }),
+                'details_count' => $production->productionDetails->count(),
+                'details' => $production->productionDetails->map(function ($detail) {
+                    $detailData = [
+                        'id' => $detail->id,
+                        'production_type' => $detail->production_type,
+                        'results_count' => $detail->productionResults->count(),
+                        'results' => $detail->productionResults->map(function ($result) {
+                            return [
+                                'id' => $result->id,
+                                'production_id' => $result->production_id,
+                                'production_file' => $result->production_file,
+                                'created_at' => $result->created_at,
+                            ];
+                        }),
+                    ];
+
+                    if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
+                        $detailData['vendor_detail'] = [
+                            'id' => $detail->vendorDetail->id,
+                            'vendor_name' => $detail->vendorDetail->vendor_name,
+                        ];
+                    } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
+                        $detailData['inhouse_detail'] = [
+                            'id' => $detail->inhouseDetail->id,
+                            'start_date' => $detail->inhouseDetail->start_date,
+                            'end_date' => $detail->inhouseDetail->end_date,
+                            'production_budget' => $detail->inhouseDetail->production_budget,
+                        ];
+                    }
+
+                    return $detailData;
+                })->values(),
+                'assigned_to' => $production->assigned_to,
+            ];
 
             DB::commit();
 
@@ -215,7 +432,6 @@ class ProductionController extends Controller
                 'message' => 'You are now working on this production task',
                 'data' => $formattedProduction,
             ], 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             DB::rollBack();
             return response()->json([
@@ -230,7 +446,6 @@ class ProductionController extends Controller
             ], 500);
         }
     }
-
     /**
      * Store production detail (vendor or in_house)
      * 
