@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Superadmin;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
-use App\Models\Role;
 use App\Models\Order;
 use App\Models\Design;
-use App\Models\Spk;
 use App\Models\Production;
 use Illuminate\Http\Request;
 
@@ -118,16 +116,20 @@ class UserController extends Controller
         }
 
         $request->validate([
-            'role_id'   => '|exists:roles,id',
-            'full_name' => 'required|string|max:100',
-            'username'  => 'required|string|max:50|unique:users,username,' . $userId,
-            'email'     => 'required|email|unique:users,email,' . $userId,
-            'user_status' => 'required|in:Pending,Active,Non-Active'
+            'full_name' => 'string|max:100',
+            'username'  => 'string|max:50|unique:users,username,' . $userId,
+            'email'     => 'email|unique:users,email,' . $userId,
+            'user_status' => 'in:Pending,Active,Non-Active'
         ]);
 
         $user = User::findOrFail($userId);
 
-        $user->update($request->all());
+        $user->update($request->only([
+            'full_name',
+            'username',
+            'email',
+            'user_status'
+        ]));
 
         return response()->json([
             'success' => true,
@@ -181,7 +183,6 @@ class UserController extends Controller
         if (
             Order::where('created_by', $user->id)->exists() ||
             Design::where('assigned_to', $user->id)->exists() ||
-            Spk::where('assigned_to', $user->id)->exists() ||
             Production::where('assigned_to', $user->id)->exists() 
         ) {
             return response()->json([
@@ -194,7 +195,7 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'User deleted'
+            'message' => 'User deleted successfully'
         ]);
     }
 }
