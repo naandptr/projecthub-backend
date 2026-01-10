@@ -16,10 +16,6 @@ use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ShipmentController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 use App\Http\Controllers\PicProduction\ProductionController as PicProductionProductionController;
-use App\Http\Controllers\PicProduction\VendorDetailController as PicProductionVendorDetailController;
-use App\Http\Controllers\PicProduction\InhouseDetailController;
-
-
 
 Route::post('/login', [AuthController::class, 'login']);
 
