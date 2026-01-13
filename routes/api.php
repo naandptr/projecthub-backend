@@ -16,10 +16,6 @@ use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ShipmentController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 use App\Http\Controllers\PicProduction\ProductionController as PicProductionProductionController;
-use App\Http\Controllers\PicProduction\VendorDetailController as PicProductionVendorDetailController;
-use App\Http\Controllers\PicProduction\InhouseDetailController;
-
-
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -107,8 +103,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });
 
-
+    // ==== PRODUCTION PIC ROUTES ====
     Route::middleware('role:production_pic')->prefix('production')->group(function () {
+        // GET all tasks
+        Route::get('/tasks', [PicProductionProductionController::class, 'index']);
+        
+        // GET filter tasks (MUST BE BEFORE {id} ROUTE)
+        Route::get('/tasks/filter', [PicProductionProductionController::class, 'indexWithFilter']);
+        
+        // GET single task by ID
+        Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
+        
+        // Start production
+        Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
+        
+        // COMPLETE production
+        Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
     
     // GET all tasks
     Route::get('/tasks', [PicProductionProductionController::class, 'index']);
@@ -132,10 +142,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
     Route::delete('/details/{detailId}', [PicProductionProductionController::class, 'deleteDetail']);
 
-    // // PRODUCTION DETAIL INFO (vendor/inhouse - unified)
-    //  Route::post('/details/{detailId}/info', [PicProductionProductionController::class, 'storeDetailInfo']);
-    //  Route::get('/details/{detailId}/info', [PicProductionProductionController::class, 'getDetailInfo']);
-     
+        
      
      // Production Results (Upload file)
     Route::post('/details/{detailId}/result', [PicProductionProductionController::class, 'storeResult']);
@@ -144,5 +151,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/results/{resultId}', [PicProductionProductionController::class, 'getResult']);
 
    });
-
 });

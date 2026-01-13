@@ -81,7 +81,6 @@ class ProductionController extends Controller
                 'data' => $formattedProductions,
                 'total' => count($formattedProductions),
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -334,7 +333,6 @@ public function getDetail($id)
                 'message' => 'Production task retrieved successfully',
                 'data' => $formattedProduction,
             ], 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,

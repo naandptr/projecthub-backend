@@ -128,8 +128,8 @@ class DesignController extends Controller
                                 'design_id' => $item->design_id,
                                 'file_url' => asset('storage/' . $item->design_file),
                                 'file_name' => basename($item->design_file),
-                                'notes' => $item->design_notes,
-                                'status' => $item->design_status,
+                                'design_notes' => $item->design_notes,
+                                'design_status' => $item->design_status,
                                 'created_at' => $item->created_at->format('d M Y H:i:s'),
                                 'updated_at' => $item->updated_at->format('d M Y H:i:s'),
                             ];
@@ -183,11 +183,18 @@ public function start(Request $request, $orderId)
 
         // Jika belum ada, buat
         if (!$hasDesigning) {
+            StatusHistory::where('order_id', $order->design->order_id)
+                ->whereNull('end_time')
+                ->update([
+                    'end_time' => now()
+            ]);
+                
             StatusHistory::create([
                 'order_id' => $orderId,
                 'status_stage' => 'designing',
-                'updated_by' => $userId,
+                'updated_by' => auth()->id(),
                 'start_time' => now(),
+                'end_time' => null
             ]);
         }
 
