@@ -127,13 +127,14 @@ Route::middleware('auth:sanctum')->group(function () {
   
 
     // Production details
+    Route::get('/{id}/details', [PicProductionProductionController::class, 'getDetail']);
     Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
     Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
     Route::delete('/details/{detailId}', [PicProductionProductionController::class, 'deleteDetail']);
 
-    // PRODUCTION DETAIL INFO (vendor/inhouse - unified)
-     Route::post('/details/{detailId}/info', [PicProductionProductionController::class, 'storeDetailInfo']);
-     Route::get('/details/{detailId}/info', [PicProductionProductionController::class, 'getDetailInfo']);
+    // // PRODUCTION DETAIL INFO (vendor/inhouse - unified)
+    //  Route::post('/details/{detailId}/info', [PicProductionProductionController::class, 'storeDetailInfo']);
+    //  Route::get('/details/{detailId}/info', [PicProductionProductionController::class, 'getDetailInfo']);
      
      
      // Production Results (Upload file)
