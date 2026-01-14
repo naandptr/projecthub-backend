@@ -11,11 +11,22 @@ class RoleController extends Controller
 {
     public function index()
     {
-        $roles = Role::with('user')->orderBy('id', 'desc')->get();
+        $limit = min(request('limit', 10), 30);
+
+        $roles = Role::with('user')
+            ->orderBy('created_at', 'desc')
+            ->paginate($limit);
 
         return response()->json([
             'success' => true,
-            'data' => $roles
+            'message' => 'List of roles',
+            'data' => $roles->items(),
+            'meta' => [
+                'current_page' => $roles->currentPage(),
+                'last_page'    => $roles->lastPage(),
+                'total'        => $roles->total(),
+                'per_page'     => $roles->perPage(),
+            ]
         ]);
     }
 

@@ -15,16 +15,25 @@ class ProductionController extends Controller
 {
     public function index()
     {
+        $limit = min(request('limit', 10), 30);
+
         $productions = Production::with(['order', 'assignedTo', 'order.statusHistory'])
             ->whereHas('order.statusHistory', function ($q) {
                 $q->where('status_stage', 'in_production');
             })
-            ->get();
+            ->orderBy('created_at', 'desc')
+            ->paginate($limit);
         
         return response()->json([
             'success' => true,
             'message' => 'List of productions',
-            'data' => $productions
+            'data' => $productions->items(),
+            'meta' => [
+                'current_page' => $productions->currentPage(),
+                'last_page'    => $productions->lastPage(),
+                'total'        => $productions->total(),
+                'per_page'     => $productions->perPage(),
+            ]
         ]);
     }
 
