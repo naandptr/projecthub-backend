@@ -15,6 +15,8 @@ class DesignController extends Controller
 {
     public function index()
     {
+        $limit = min(request('limit', 10), 30);
+
         $designs = Design::with([
             'order',
             'assignedTo',
@@ -24,21 +26,17 @@ class DesignController extends Controller
         ->whereHas('order.statusHistory', function ($q) {
             $q->where('status_stage', 'designing');
         })
-        ->get();
+        ->orderBy('created_at', 'desc')
+        ->paginate($limit);
 
-        $data = $designs->map(function ($design) {
-
-            // default true
+        $designs->getCollection()->transform(function ($design) {
             $approvalStatus = true;
 
             if ($design->designItems->isNotEmpty()) {
-
-                // jika ada in_progress maka false
                 if ($design->designItems->contains('design_status', 'in_progress')) {
                     $approvalStatus = false;
                 }
 
-                // jika ada approved maka true (override)
                 if ($design->designItems->contains('design_status', 'approved')) {
                     $approvalStatus = true;
                 }
@@ -56,7 +54,13 @@ class DesignController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'List of designs',
-            'data' => $data
+            'data' => $designs->items(), 
+            'meta' => [
+                'current_page' => $designs->currentPage(),
+                'last_page'    => $designs->lastPage(),
+                'total'        => $designs->total(),
+                'per_page'     => $designs->perPage(),
+            ]
         ]);
     }
 
