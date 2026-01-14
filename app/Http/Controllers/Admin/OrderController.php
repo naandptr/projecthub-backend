@@ -6,7 +6,6 @@ use App\Models\Order;
 use App\Models\Design;
 use App\Models\Production;
 use App\Models\StatusHistory;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -16,16 +15,26 @@ class OrderController extends Controller
 {
     public function index()
     {
+        $limit = min(request('limit', 10), 30);
+
         $orders = Order::with([
             'design',
             'design.assignedTo',
             'statusHistory'
-        ])->get();
+        ])
+        ->orderBy('created_at', 'desc')
+        ->paginate($limit);
 
         return response()->json([
             'success' => true,
             'message' => 'List of orders',
-            'data' => $orders
+            'data' => $orders->items(), 
+            'meta' => [
+                'current_page' => $orders->currentPage(),
+                'last_page'    => $orders->lastPage(),
+                'total'        => $orders->total(),
+                'per_page'     => $orders->perPage(),
+            ]
         ]);
     }
 
