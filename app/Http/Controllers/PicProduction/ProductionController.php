@@ -813,7 +813,7 @@ public function getDetail($id)
                     'id' => $result->id,
                     'production_id' => $result->production_id,  // ✅ RESPONSE production_id
                     'production_file' => $result->production_file,
-                    'file_url' => Storage::url($result->production_file),
+                    'file_url' => asset('storage/' . $result->production_file),
                     'created_at' => $result->created_at,
                 ],
             ], 201);
@@ -899,7 +899,7 @@ public function getDetail($id)
                     'id' => $result->id,
                     'production_id' => $result->production_id,  // ✅ CORRECT KEY
                     'production_file' => $result->production_file,
-                    'file_url' => Storage::url($result->production_file),
+                    'file_url' => asset('storage/' . $result->production_file),
                     'updated_at' => $result->updated_at,
                 ],
             ], 200);
@@ -983,7 +983,7 @@ public function getDetail($id)
                     'id' => $result->id,
                     'production_id' => $result->production_id,  // ✅ CORRECT KEY
                     'production_file' => $result->production_file,
-                    'file_url' => Storage::url($result->production_file),
+                    'file_url' => asset('storage/' . $result->production_file),
                     'created_at' => $result->created_at,
                     'updated_at' => $result->updated_at,
                 ],
