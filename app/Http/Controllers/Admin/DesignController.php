@@ -31,14 +31,29 @@ class DesignController extends Controller
 
         $designs->getCollection()->transform(function ($design) {
             $approvalStatus = true;
+            $imageCover = $design->order->order_file;
 
             if ($design->designItems->isNotEmpty()) {
-                if ($design->designItems->contains('design_status', 'in_progress')) {
-                    $approvalStatus = false;
-                }
+                $approvedItem = $design->designItems
+                    ->where('design_status', 'approved')
+                    ->sortByDesc('created_at')
+                    ->first();
 
-                if ($design->designItems->contains('design_status', 'approved')) {
+                if ($approvedItem) {
+                    $imageCover = $approvedItem->design_file;
                     $approvalStatus = true;
+                } else {
+                    $latestItem = $design->designItems
+                        ->sortByDesc('created_at')
+                        ->first();
+
+                    $imageCover = $latestItem?->design_file;
+
+                    if ($design->designItems->contains('design_status', 'in_progress')) {
+                        $approvalStatus = false;
+                    } else {
+                        $approvalStatus = true;
+                    }                    
                 }
             }
 
@@ -47,6 +62,7 @@ class DesignController extends Controller
                 'order_id' => $design->order->id,
                 'assigned_to' => $design->assigned_to,
                 'approval_status' => $approvalStatus,
+                'image_cover' => $imageCover,
                 'order' => $design->order,
             ];
         });
