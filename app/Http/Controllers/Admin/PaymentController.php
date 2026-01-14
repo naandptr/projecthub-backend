@@ -10,13 +10,38 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
+    // public function index()
+    // {
+    //     $orders = Order::with(['payment', 'shipment'])
+    //         ->orderBy('id', 'desc')
+    //         ->get();
+
+    //     $data = $orders->map(function($order) {
+    //         return [
+    //             'order_id' => $order->id,
+    //             'order_number' => $order->order_number,
+    //             'customer' => $order->cust_name,
+    //             'amount' => $order->product_price * $order->product_quantity,
+    //             'payments' => $order->payment,
+    //             'shipment' => $order->shipment,
+    //         ];
+    //     });
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => $data
+    //     ]);
+    // }
+
     public function index()
     {
-        $orders = Order::with(['payment', 'shipment'])
-            ->orderBy('id', 'desc')
-            ->get();
+        $limit = min(request('limit', 10), 30);
 
-        $data = $orders->map(function($order) {
+        $orders = Order::with(['payment', 'shipment'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($limit);
+
+        $orders->getCollection()->transform(function ($order) {
             return [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
@@ -29,7 +54,13 @@ class PaymentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $data
+            'data' => $orders->items(),
+            'meta' => [
+                'current_page' => $orders->currentPage(),
+                'last_page'    => $orders->lastPage(),
+                'total'        => $orders->total(),
+                'per_page'     => $orders->perPage(),
+            ]
         ]);
     }
 

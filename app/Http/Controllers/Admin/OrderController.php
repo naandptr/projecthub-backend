@@ -232,14 +232,17 @@ class OrderController extends Controller
 
     public function completed()
     {
+        $limit = min(request('limit', 10), 30);
+
         $orders = Order::with([
             'shipment',
             'latestStatus'
         ])
-        ->whereHas('latestStatus', function ($q) {
-            $q->where('status_stage', 'completed');
-        })
-        ->get();
+            ->whereHas('latestStatus', function ($q) {
+                $q->where('status_stage', 'completed');
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate($limit);
 
         if ($orders->isEmpty()) {
             return response()->json([
@@ -251,7 +254,13 @@ class OrderController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'List of completed orders',
-            'data' => $orders
+            'data' => $orders->items(),
+            'meta' => [
+                'current_page' => $orders->currentPage(),
+                'last_page'    => $orders->lastPage(),
+                'total'        => $orders->total(),
+                'per_page'     => $orders->perPage(),
+            ]
         ]);
     }
 }
