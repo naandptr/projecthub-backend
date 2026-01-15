@@ -17,78 +17,86 @@ use App\Http\Controllers\Controller;
 
 class ProductionController extends Controller
 {
-    /**
-     * Get all production tasks assigned to current user
-     */
-     public function index()
-    {
-        try {
-            $userId = auth()->id();
+ /**
+ * ============================================================
+ * GET /api/production
+ * INDEX: Get all production tasks (CONFIRMED ke atas)
+ * ============================================================
+ * ✅ REVISI: Tampilkan status mulai dari CONFIRMED ke atas
+ * Status yang tampil: confirmed, in_production, ready, completed
+ * Status yang TIDAK tampil: pending, designing
+ */
+public function index()
+{
+    try {
+        $userId = auth()->id();
 
-            // Get productions dengan status confirmed SAJA
-            $productions = Production::whereHas('order.statusHistory', function ($query) {
-                    $query->where('status_stage', 'confirmed')
-                        ->whereRaw('id = (SELECT MAX(id) FROM status_history WHERE order_id = orders.id)');
-                })
-                ->with([
-                    'order' => function ($q) {
-                        $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes');
-                    },
-                    'order.statusHistory' => function ($query) {
-                        $query->with('updatedBy:id,username')
-                            ->orderBy('created_at', 'desc');
-                    },
-                    'productionDetails' => function ($q) {
-                        $q->with(['vendorDetail', 'inhouseDetail']);
-                    },
-                    'productionResults'
-                ])
-                ->orderBy('created_at', 'desc')
-                ->get();
+        // ✅ REVISI: Get productions dengan status CONFIRMED ke atas
+        $productions = Production::whereHas('order.statusHistory', function ($query) {
+                $query->whereIn('status_stage', ['confirmed', 'in_production', 'ready', 'completed'])
+                    ->whereRaw('id = (SELECT MAX(id) FROM status_history WHERE order_id = orders.id)');
+            })
+            ->with([
+                'order' => function ($q) {
+                    $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes');
+                },
+                'order.statusHistory' => function ($query) {
+                    $query->with('updatedBy:id,username')
+                        ->orderBy('created_at', 'desc');
+                },
+                'productionDetails' => function ($q) {
+                    $q->with(['vendorDetail', 'inhouseDetail']);
+                },
+                'productionResults'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-            $formattedProductions = $productions->map(function ($production) {
-                $latestStatus = $production->order->statusHistory->first();
-                $totalPrice = $production->order->product_quantity * $production->order->product_price;
+        $formattedProductions = $productions->map(function ($production) {
+            $latestStatus = $production->order->statusHistory->first();
+            $totalPrice = $production->order->product_quantity * $production->order->product_price;
 
-                return [
-                    'id' => $production->id,
-                    'order_id' => $production->order_id,
-                    'order_number' => $production->order->order_number,
-                    'task_information' => [
-                        'customer_name' => $production->order->cust_name,
-                        'phone_number' => $production->order->cust_phone,
-                        'order_date' => $production->order->order_date,
-                        'product_name' => $production->order->product_name,
-                        'order_quantity' => $production->order->product_quantity . ' pcs',
-                        'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
-                        'deadline' => $production->order->order_deadline,
-                    ],
-                    'order_file' => $production->order->order_file,
-                    'order_notes' => $production->order->order_notes,
-                    'status' => [
-                        'stage' => $latestStatus?->status_stage ?? 'pending',
-                        'started_at' => $latestStatus?->start_time,
-                        'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
-                    ],
-                    'details_count' => $production->productionDetails->count(),
-                    'assigned_to' => $production->assigned_to,
-                ];
-            });
+            return [
+                'id' => $production->id,
+                'order_id' => $production->order_id,
+                'order_number' => $production->order->order_number,
+                'task_information' => [
+                    'customer_name' => $production->order->cust_name,
+                    'phone_number' => $production->order->cust_phone,
+                    'order_date' => $production->order->order_date,
+                    'product_name' => $production->order->product_name,
+                    'order_quantity' => $production->order->product_quantity . ' pcs',
+                    'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
+                    'deadline' => $production->order->order_deadline,
+                ],
+                'order_file' => $production->order->order_file,
+                'order_file_url' => asset('storage/' . $production->order->order_file), // ✅ File URL
+                'order_notes' => $production->order->order_notes,
+                'status' => [
+                    'stage' => $latestStatus?->status_stage ?? 'pending',
+                    'started_at' => $latestStatus?->start_time,
+                    'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
+                ],
+                'details_count' => $production->productionDetails->count(),
+                'assigned_to' => $production->assigned_to,
+            ];
+        });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Production tasks with status confirmed retrieved successfully',
-                'data' => $formattedProductions,
-                'total' => count($formattedProductions),
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving production tasks',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Production tasks retrieved successfully',
+            'data' => $formattedProductions,
+            'total' => count($formattedProductions),
+        ], 200);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error retrieving production tasks',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
       /**
  * GET PRODUCTION DETAIL
@@ -347,163 +355,119 @@ public function getDetail($id)
         }
     }
 
-   public function startProduction(Request $request, $id)
-{
-    DB::beginTransaction();
-    try {
-        $userId = auth()->user()->id;
+   /**
+     * REVISI: Start production - Mirip dengan DesignController
+     * - Jika sudah di-assign ke saya → return success langsung
+     * - Jika belum di-assign → assign + ubah status
+     */
+    public function startProduction(Request $request, $id)
+    {
+        DB::beginTransaction();
+        try {
+            $userId = auth()->user()->id;
 
-        $production = Production::findOrFail($id);
-        $order      = Order::findOrFail($production->order_id);
+            $production = Production::with('order')->findOrFail($id);
+            $order = $production->order;
 
-        // ✅ CEK STATUS TERAKHIR HARUS CONFIRMED
-        $latestStatusHistory = $order->statusHistory()
-            ->latest('created_at')
-            ->first();
-
-        if (!$latestStatusHistory || $latestStatusHistory->status_stage !== 'confirmed') {
-            throw new \Exception('Production can only be started if order status is CONFIRMED');
-        }
-
-        // ✅ CEK SUDAH DI-ASSIGN USER LAIN ATAU BELUM
-        if ($production->assigned_to !== null && $production->assigned_to !== $userId) {
-            throw new \Exception('This production task is already assigned to another user');
-        }
-
-        // ✅ JIKA BELUM PERNAH DI-ASSIGN KE USER INI → ASSIGN & UPDATE STATUS
-        if ($production->assigned_to !== $userId) {
-            $production->update(['assigned_to' => $userId]);
-
-            // Tutup status CONFIRMED (end_time)
-            if ($latestStatusHistory) {
-                $latestStatusHistory->update(['end_time' => now()]);
+            // Check if already assigned to another user
+            if ($production->assigned_to !== null && $production->assigned_to !== $userId) {
+                throw new \Exception('This production task is already assigned to another user');
             }
 
-            // Buat status baru: IN_PRODUCTION
-            StatusHistory::create([
-                'order_id'     => $order->id,
-                'status_stage' => 'in_production',
-                'updated_by'   => $userId,
-                'start_time'   => now(),
-            ]);
-        }
+            // ✅ Jika sudah di-assign ke saya, cek apakah sudah ada status in_production
+            if ($production->assigned_to === $userId) {
+                $hasInProduction = $order->statusHistory()
+                    ->where('status_stage', 'in_production')
+                    ->exists();
 
-        // Refresh data production + relasi
-        $production = $production->fresh([
-            'order',
-            'productionDetails.vendorDetail',
-            'productionDetails.inhouseDetail',
-            'productionResults',
-            'order.statusHistory.updatedBy',
-        ]);
+                // Jika belum ada status in_production, buat
+                if (!$hasInProduction) {
+                    // Close previous status
+                    StatusHistory::where('order_id', $order->id)
+                        ->whereNull('end_time')
+                        ->update(['end_time' => now()]);
 
-        $latestStatus = $production->order->statusHistory->first();
-        $totalPrice   = $production->order->product_quantity * $production->order->product_price;
-
-        $formattedProduction = [
-            'id'         => $production->id,
-            'order_id'   => $production->order_id,
-            'order_number' => $production->order->order_number,
-            'task_information' => [
-                'customer_name'  => $production->order->cust_name,
-                'phone_number'   => $production->order->cust_phone,
-                'address'        => $production->order->cust_address,
-                'order_date'     => $production->order->order_date,
-                'product_name'   => $production->order->product_name,
-                'order_quantity' => $production->order->product_quantity.' pcs',
-                'product_price'  => 'Rp '.number_format($production->order->product_price, 0, ',', '.'),
-                'order_total'    => 'Rp '.number_format($totalPrice, 0, ',', '.'),
-                'deadline'       => $production->order->order_deadline,
-            ],
-            'order_file'  => $production->order->order_file,
-            'order_notes' => $production->order->order_notes,
-            'status' => [
-                'stage'      => $latestStatus?->status_stage ?? 'pending',
-                'started_at' => $latestStatus?->start_time,
-                'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
-            ],
-            'status_timeline' => $production->order->statusHistory->map(function ($status) {
-                return [
-                    'id'               => $status->id,
-                    'stage'            => $status->status_stage,
-                    'start_time'       => $status->start_time,
-                    'end_time'         => $status->end_time,
-                    'duration_minutes' => $status->end_time && $status->start_time
-                        ? $status->end_time->diffInMinutes($status->start_time)
-                        : null,
-                    'updated_by'       => $status->updatedBy?->username,
-                    'created_at'       => $status->created_at,
-                ];
-            }),
-            'details_count' => $production->productionDetails->count(),
-            'details' => $production->productionDetails->map(function ($detail) use ($production) {
-                $detailData = [
-                    'id'             => $detail->id,
-                    'production_type'=> $detail->production_type,
-                    'results_count'  => $production->productionResults->count(),
-                ];
-
-                if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
-                    $detailData['vendor_detail'] = [
-                        'id'          => $detail->vendorDetail->id,
-                        'vendor_name' => $detail->vendorDetail->vendor_name,
-                        'start_date'  => $detail->vendorDetail->start_date,
-                        'deadline'    => $detail->vendorDetail->deadline,
-                    ];
-                } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
-                    $detailData['inhouse_detail'] = [
-                        'id'               => $detail->inhouseDetail->id,
-                        'start_date'       => $detail->inhouseDetail->start_date,
-                        'end_date'         => $detail->inhouseDetail->end_date,
-                        'production_budget'=> $detail->inhouseDetail->production_budget,
-                    ];
+                    // Create in_production status
+                    StatusHistory::create([
+                        'order_id' => $order->id,
+                        'status_stage' => 'in_production',
+                        'updated_by' => $userId,
+                        'start_time' => now(),
+                        'end_time' => null
+                    ]);
                 }
 
-                $detailData['results'] = $production->productionResults->map(function ($result) {
-                    return [
-                        'id'              => $result->id,
-                        'production_file' => $result->production_file,
-                        'file_url'        => Storage::url($result->production_file),
-                        'created_at'      => $result->created_at,
-                    ];
-                });
+                $latestStatus = $order->statusHistory()->latest('start_time')->first();
 
-                return $detailData;
-            }),
-            'assigned_to' => $production->assigned_to,
-        ];
+                DB::commit();
 
-        DB::commit();
+                return response()->json([
+                    'success' => true,
+                    'message' => 'You are already working on this production task',
+                    'data' => [
+                        'production_id' => $production->id,
+                        'order_id' => $order->id,
+                        'status' => $latestStatus?->status_stage ?? 'in_production',
+                        'assigned_to' => $userId,
+                    ],
+                ]);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'You are now working on this production task',
-            'data'    => $formattedProduction,
-        ], 200);
+            // ✅ Jika belum di-assign, assign sekarang + ubah status
+            $production->update(['assigned_to' => $userId]);
 
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        DB::rollBack();
-        return response()->json([
-            'success' => false,
-            'message' => 'Production or Order not found',
-        ], 404);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage(),
-        ], 500);
+            // Close previous status
+            $previousStatus = $order->statusHistory()->latest('created_at')->first();
+            if ($previousStatus) {
+                $previousStatus->update(['end_time' => now()]);
+            }
+
+            // Create in_production status
+            StatusHistory::create([
+                'order_id' => $order->id,
+                'status_stage' => 'in_production',
+                'updated_by' => $userId,
+                'start_time' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Production task started successfully',
+                'data' => [
+                    'production_id' => $production->id,
+                    'order_id' => $order->id,
+                    'status' => 'in_production',
+                    'assigned_to' => $userId,
+                ],
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Production or Order not found',
+            ], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
 
-    /**
-     * REVISI #3: Store production detail - UNIFIED API (1x REQUEST)
-     * Input semua data sekaligus: production_type, vendor_name, start_date, deadline, budget
+   /**
+     * REVISI #3: Store production detail - Auto ubah status ke in_production
+     * Mirip dengan storeItem di DesignController
      */
     public function storeDetail(Request $request, $id)
     {
         DB::beginTransaction();
         try {
+            $userId = auth()->user()->id;
+
             // Validasi dasar
             $baseValidator = Validator::make(array_merge(['id' => $id], $request->all()), [
                 'id' => 'required|exists:productions,id',
@@ -516,6 +480,36 @@ public function getDetail($id)
                     'message' => 'Validation failed',
                     'errors' => $baseValidator->errors(),
                 ], 422);
+            }
+
+            // Get production dengan order
+            $production = Production::with('order')->findOrFail($id);
+            $order = $production->order;
+
+            // ✅ VALIDASI: Harus sudah start production (assigned_to tidak null)
+            if ($production->assigned_to === null) {
+                throw new \Exception('You must start production first before creating production detail');
+            }
+
+            // ✅ VALIDASI: Harus user yang di-assign
+            if ($production->assigned_to !== $userId) {
+                throw new \Exception('Forbidden - You do not have permission to create detail for this production');
+            }
+
+            // ✅ AUTO UBAH STATUS: Jika masih confirmed, ubah ke in_production
+            $latestStatus = $order->statusHistory()->latest('created_at')->first();
+            
+            if ($latestStatus && $latestStatus->status_stage === 'confirmed') {
+                // Close confirmed status
+                $latestStatus->update(['end_time' => now()]);
+
+                // Create in_production status
+                StatusHistory::create([
+                    'order_id' => $order->id,
+                    'status_stage' => 'in_production',
+                    'updated_by' => $userId,
+                    'start_time' => now(),
+                ]);
             }
 
             $productionType = $request->production_type;
@@ -551,13 +545,13 @@ public function getDetail($id)
                 }
             }
 
-            // Step 1: Create production detail
+            // Create production detail
             $detail = ProductionDetail::create([
                 'production_id' => $id,
                 'production_type' => $productionType,
             ]);
 
-            // Step 2: Create vendor or inhouse detail
+            // Create vendor or inhouse detail
             if ($productionType === 'vendor') {
                 $vendorDetail = VendorDetail::create([
                     'production_detail_id' => $detail->id,
@@ -617,13 +611,12 @@ public function getDetail($id)
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Error creating production detail',
-                'error' => $e->getMessage(),
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
-
-    /**
+   
+   /**
      * Update production detail
      */
     public function updateDetail(Request $request, $detailId)
@@ -772,9 +765,10 @@ public function getDetail($id)
 
 
     /**
-     * Store production result (upload file)
+     * Upload production result
+     * ✅ REVISI #2: file_url pakai asset() seperti DesignController
      */
-    public function storeResult(Request $request, $detailId)
+    public function storeResult(Request $request, $productionId)
     {
         $validator = Validator::make($request->all(), [
             'production_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
@@ -789,20 +783,14 @@ public function getDetail($id)
         }
 
         try {
-            // Step 1: Get production detail to extract production_id
-            $detail = ProductionDetail::findOrFail($detailId);
-            
-            // Step 2: Extract production_id dari detail
-            $productionId = $detail->production_id;
-            
-            // Step 3: Upload file
+            $production = Production::findOrFail($productionId);
+
             $file = $request->file('production_file');
             $filename = time() . '_' . $file->getClientOriginalName();
             $path = $file->storeAs('production_results', $filename, 'public');
 
-            // Step 4: Create result dengan production_id
             $result = ProductionResult::create([
-                'production_id' => $productionId,  // ✅ GUNAKAN production_id
+                'production_id' => $productionId,
                 'production_file' => $path,
             ]);
 
@@ -811,9 +799,10 @@ public function getDetail($id)
                 'message' => 'Production result uploaded successfully',
                 'data' => [
                     'id' => $result->id,
-                    'production_id' => $result->production_id,  // ✅ RESPONSE production_id
+                    'production_id' => $result->production_id,
                     'production_file' => $result->production_file,
-                    'file_url' => asset('storage/' . $result->production_file),
+                    'file_url' => asset('storage/' . $result->production_file), // ✅ FULL URL
+                    'file_name' => basename($result->production_file),
                     'created_at' => $result->created_at,
                 ],
             ], 201);
@@ -821,9 +810,8 @@ public function getDetail($id)
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Production detail not found',
+                'message' => 'Production not found',
             ], 404);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -833,13 +821,13 @@ public function getDetail($id)
         }
     }
 
-    /**
+/**
      * Update production result (replace file)
-     * ✅ SESUAI DENGAN CODE KAMU + DEBUG LOGGING
+     * âœ… SESUAI DENGAN CODE KAMU + DEBUG LOGGING
      */
     public function updateResult(Request $request, $resultId)
     {
-        // ✅ DEBUG: Log request info
+        // âœ… DEBUG: Log request info
         \Log::info('updateResult DEBUG', [
             'resultId' => $resultId,
             'hasFile_production_file' => $request->hasFile('production_file'),
@@ -862,7 +850,7 @@ public function getDetail($id)
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $validator->errors(),
-                'debug_has_file' => $request->hasFile('production_file'),  // ✅ DEBUG
+                'debug_has_file' => $request->hasFile('production_file'),  // âœ… DEBUG
             ], 422);
         }
 
@@ -897,7 +885,7 @@ public function getDetail($id)
                 'message' => 'Production result updated successfully',
                 'data' => [
                     'id' => $result->id,
-                    'production_id' => $result->production_id,  // ✅ CORRECT KEY
+                    'production_id' => $result->production_id,  // âœ… CORRECT KEY
                     'production_file' => $result->production_file,
                     'file_url' => asset('storage/' . $result->production_file),
                     'updated_at' => $result->updated_at,
@@ -928,46 +916,6 @@ public function getDetail($id)
             ], 500);
         }
     }
-
-    /**
-     * Delete production result
-     */
-    public function deleteResult($resultId)
-    {
-        DB::beginTransaction();
-        try {
-            $result = ProductionResult::findOrFail($resultId);
-
-            // Delete file
-            if ($result->production_file && Storage::disk('public')->exists($result->production_file)) {
-                Storage::disk('public')->delete($result->production_file);
-            }
-
-            $result->delete();
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Production result deleted successfully',
-            ], 200);
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Production result not found',
-            ], 404);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error deleting production result',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
     /**
      * Get single production result
      */
@@ -1005,87 +953,103 @@ public function getDetail($id)
     }
 
     /**
-     * Complete production
-     */
-    public function completeProduction(Request $request, $id)
-    {
-        DB::beginTransaction();
-        try {
-            $production = Production::with(['productionDetails.productionResults'])->findOrFail($id);
-            $order = Order::findOrFail($production->order_id);
+ * ============================================================
+ * POST /api/production/{id}/complete
+ * COMPLETE: Selesaikan production
+ * ============================================================
+ * ✅ REVISI:
+ * 1. Status harus IN_PRODUCTION (bukan CONFIRMED)
+ * 2. Production detail tidak boleh kosong
+ * 3. Semua detail harus punya result file
+ */
+public function completeProduction(Request $request, $id)
+{
+    DB::beginTransaction();
+    try {
+        $production = Production::with(['productionDetails.productionResults', 'order.statusHistory'])->findOrFail($id);
+        $order = Order::findOrFail($production->order_id);
 
-            if ($production->productionDetails->count() === 0) {
-                throw new \Exception('Production must have at least one production detail');
-            }
+        // ✅ REVISI #1: Cek status harus IN_PRODUCTION (bukan CONFIRMED)
+        $latestStatus = $order->statusHistory()
+            ->latest('created_at')
+            ->first();
 
-            $hasAllResults = true;
-            foreach ($production->productionDetails as $detail) {
-                if ($detail->productionResults->count() === 0) {
-                    $hasAllResults = false;
-                    break;
-                }
-            }
-
-            if (!$hasAllResults) {
-                throw new \Exception('All production details must have at least one result file');
-            }
-
-            $latestStatus = $order->statusHistory()->orderBy('created_at', 'desc')->first();
-
-            if ($latestStatus) {
-                $latestStatus->update(['end_time' => now()]);
-            }
-
-            $completedStatus = StatusHistory::create([
-                'order_id' => $order->id,
-                'status_stage' => 'completed',
-                'start_time' => now(),
-                'end_time' => now(),
-                'updated_by' => auth()->id(),
-            ]);
-
-            DB::commit();
-
-            $production = $production->fresh(['order', 'productionDetails.productionResults']);
-
-            $totalPrice = $production->order->product_quantity * $production->order->product_price;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Production completed successfully',
-                'data' => [
-                    'production_id' => $production->id,
-                    'order_id' => $order->id,
-                    'order_number' => $production->order->order_number,
-                    'status' => $completedStatus->status_stage,
-                    'completed_at' => $completedStatus->start_time,
-                    'task_information' => [
-                        'customer_name' => $production->order->cust_name,
-                        'product_name' => $production->order->product_name,
-                        'product_quantity' => $production->order->product_quantity . ' pcs',
-                        'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
-                    ],
-                    'details_completed' => $production->productionDetails->count(),
-                    'total_results' => $production->productionDetails->sum(function ($detail) {
-                        return $detail->productionResults->count();
-                    }),
-                ],
-            ], 200);
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Production not found',
-            ], 404);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 400);
+        if (!$latestStatus || $latestStatus->status_stage !== 'in_production') {
+            throw new \Exception('Production can only be completed from IN_PRODUCTION status');
         }
-    }
 
+        // ✅ REVISI #2: Validasi production detail tidak boleh kosong
+        if ($production->productionDetails->count() === 0) {
+            throw new \Exception('Production must have at least one production detail');
+        }
+
+        // ✅ REVISI #3: Validasi semua detail harus punya results
+        $hasAllResults = true;
+        foreach ($production->productionDetails as $detail) {
+            if ($detail->productionResults->count() === 0) {
+                $hasAllResults = false;
+                break;
+            }
+        }
+
+        if (!$hasAllResults) {
+            throw new \Exception('All production details must have at least one result file');
+        }
+
+        // Close IN_PRODUCTION status
+        if ($latestStatus) {
+            $latestStatus->update(['end_time' => now()]);
+        }
+
+        // Create COMPLETED status
+        $completedStatus = StatusHistory::create([
+            'order_id' => $order->id,
+            'status_stage' => 'completed',
+            'start_time' => now(),
+            'end_time' => now(),
+            'updated_by' => auth()->id(),
+        ]);
+
+        DB::commit();
+
+        $production = $production->fresh(['order', 'productionDetails.productionResults']);
+        $totalPrice = $production->order->product_quantity * $production->order->product_price;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Production completed successfully',
+            'data' => [
+                'production_id' => $production->id,
+                'order_id' => $order->id,
+                'order_number' => $production->order->order_number,
+                'status' => $completedStatus->status_stage,
+                'completed_at' => $completedStatus->start_time,
+                'task_information' => [
+                    'customer_name' => $production->order->cust_name,
+                    'product_name' => $production->order->product_name,
+                    'product_quantity' => $production->order->product_quantity . ' pcs',
+                    'order_total' => 'Rp ' . number_format($totalPrice, 0, ',', '.'),
+                ],
+                'details_completed' => $production->productionDetails->count(),
+                'total_results' => $production->productionDetails->sum(function ($detail) {
+                    return $detail->productionResults->count();
+                }),
+            ],
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Production not found',
+        ], 404);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 400);
+    }
+}
 }
