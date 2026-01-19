@@ -85,7 +85,7 @@ class UserController extends Controller
             'username'   => $request->username,
             'email'      => $request->email,
             'password'   => Hash::make($defaultPassword),
-            'is_default_password' => 1,
+            'is_default_password' => true,
             'user_status' => User::STATUS_PENDING
         ]);
 
@@ -164,7 +164,7 @@ class UserController extends Controller
 
         $user->update([
             'password' => Hash::make($defaultPassword),
-            'is_default_password' => 1
+            'is_default_password' => true
         ]);
 
         return response()->json([
