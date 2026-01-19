@@ -107,50 +107,21 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ==== PRODUCTION PIC ROUTES ====
     Route::middleware('role:production_pic')->prefix('production')->group(function () {
-        // GET all tasks
+        // TASKS
         Route::get('/tasks', [PicProductionProductionController::class, 'index']);
-        
-        // GET filter tasks (MUST BE BEFORE {id} ROUTE)
-        Route::get('/tasks/filter', [PicProductionProductionController::class, 'indexWithFilter']);
-        
-        // GET single task by ID
         Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
-        
-        // Start production
         Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
-        
-        // COMPLETE production
-        Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
-    
-    // GET all tasks
-    Route::get('/tasks', [PicProductionProductionController::class, 'index']);
-    
-    // GET filter tasks (MUST BE BEFORE {id} ROUTE)
-    Route::get('/tasks/filter', [PicProductionProductionController::class, 'indexWithFilter']);
-    
-    // GET single task by ID
-    Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
-    
-    // Start production
-    Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
-    
-      // COMPLETE production
-    Route::post('/{id}/complete', [PicProductionProductionController::class, 'completeProduction']);
-  
 
-    // Production details
-    Route::get('/{id}/details', [PicProductionProductionController::class, 'getDetail']);
-    Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
-    Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
-    Route::delete('/details/{detailId}', [PicProductionProductionController::class, 'deleteDetail']);
+        // PRODUCTION DETAILS
+        Route::get('/{id}/details', [PicProductionProductionController::class, 'getDetail']);
+        Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
+        Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
+        Route::delete('/details/{detailId}', [PicProductionProductionController::class, 'deleteDetail']);
 
-        
-     
-     // Production Results (Upload file)
-    Route::post('/details/{detailId}/result', [PicProductionProductionController::class, 'storeResult']);
-    Route::put('/results/{resultId}', [PicProductionProductionController::class, 'updateResult']);
-    Route::delete('/results/{resultId}', [PicProductionProductionController::class, 'deleteResult']);
-    Route::get('/results/{resultId}', [PicProductionProductionController::class, 'getResult']);
-
+        // PRODUCTION RESULTS
+        Route::post('/details/{detailId}/result', [PicProductionProductionController::class, 'storeResult']);
+        Route::put('/results/{resultId}', [PicProductionProductionController::class, 'updateResult']);
+        Route::delete('/results/{resultId}', [PicProductionProductionController::class, 'deleteResult']);
+        Route::get('/results/{resultId}', [PicProductionProductionController::class, 'getResult']);
    });
 });
