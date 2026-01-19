@@ -10,16 +10,15 @@ use App\Http\Controllers\Superadmin\ProgressTrackController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\DesignController as AdminDesignController;
-use App\Http\Controllers\Admin\SpkController;
 use App\Http\Controllers\Admin\ProductionController as AdminProductionController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ShipmentController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
-use App\Http\Controllers\PicProduction\ProductionController as PicProductionProductionController;
+use App\Http\Controllers\PicProduction\ProductionController as ProductionPicProductionController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::get('/track-order', [TrackOrderController::class, 'index']);
+Route::get('/track-order', [TrackOrderController::class, 'show']);
 
 Route::middleware('auth:sanctum')->get('/whoami', fn(Request $r) => $r->user());
 
@@ -29,11 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::put('/change-password', [AuthController::class, 'changePassword']);
 
-    Route::get('/dashboard', function () {
-        return response()->json(["message" => "Dashboard Access"]);
-    })->middleware('role:superadmin,admin,designer_pic,production_pic');
-
-    // ==== SUPERADMIN ROUTES ====
+    /* SUPERADMIN ROUTES */
     Route::middleware(['role:superadmin'])->prefix('superadmin')->group(function () {
         // ROLE
         Route::get('/roles', [RoleController::class, 'index']);
@@ -53,7 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/progress', [ProgressTrackController::class, 'index']);
     });
 
-    // ==== ADMIN ROUTES ====
+    /* ADMIN ROUTES */
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         // USER
         Route::get('/users/by-role/{role}', [AdminUserController::class, 'getUsersByRole']);
@@ -71,7 +66,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/designs/{designId}', [AdminDesignController::class, 'show']);
         Route::put('/design-items/{itemId}', [AdminDesignController::class, 'updateItemStatus']);
         Route::post('/designs/{designId}/confirm', [AdminDesignController::class, 'confirmDesign']);
-        Route::post('/spk', [SpkController::class, 'store']);
 
         // PRODUCTION
         Route::get('/productions', [AdminProductionController::class, 'index']);
@@ -92,7 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/shipments/{shipmentId}', [ShipmentController::class, 'destroy']);
     });
 
-    // ==== DESIGN PIC ROUTES ====
+    /* DESIGNER_PIC ROUTES */
     Route::middleware('role:designer_pic')->prefix('designer')->group(function () {
         // TASKS
         Route::get('/tasks', [DesignPicDesignController::class, 'index']);
@@ -105,23 +99,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });
 
-    // ==== PRODUCTION PIC ROUTES ====
+    /* PRODUCTION_PIC ROUTES */
     Route::middleware('role:production_pic')->prefix('production')->group(function () {
         // TASKS
-        Route::get('/tasks', [PicProductionProductionController::class, 'index']);
-        Route::get('/tasks/{id}', [PicProductionProductionController::class, 'show']);
-        Route::post('/{id}/start', [PicProductionProductionController::class, 'startProduction']);
+        Route::get('/tasks', [ProductionPicProductionController::class, 'index']);
+        Route::get('/tasks/{id}', [ProductionPicProductionController::class, 'show']);
+        Route::post('/{id}/start', [ProductionPicProductionController::class, 'startProduction']);
 
         // PRODUCTION DETAILS
-        Route::get('/{id}/details', [PicProductionProductionController::class, 'getDetail']);
-        Route::post('/{id}/details', [PicProductionProductionController::class, 'storeDetail']);
-        Route::put('/details/{detailId}', [PicProductionProductionController::class, 'updateDetail']);
-        Route::delete('/details/{detailId}', [PicProductionProductionController::class, 'deleteDetail']);
+        Route::get('/{id}/details', [ProductionPicProductionController::class, 'getDetail']);
+        Route::post('/{id}/details', [ProductionPicProductionController::class, 'storeDetail']);
+        Route::put('/details/{detailId}', [ProductionPicProductionController::class, 'updateDetail']);
+        Route::delete('/details/{detailId}', [ProductionPicProductionController::class, 'deleteDetail']);
 
         // PRODUCTION RESULTS
-        Route::post('/details/{detailId}/result', [PicProductionProductionController::class, 'storeResult']);
-        Route::put('/results/{resultId}', [PicProductionProductionController::class, 'updateResult']);
-        Route::delete('/results/{resultId}', [PicProductionProductionController::class, 'deleteResult']);
-        Route::get('/results/{resultId}', [PicProductionProductionController::class, 'getResult']);
+        Route::post('/details/{detailId}/result', [ProductionPicProductionController::class, 'storeResult']);
+        Route::put('/results/{resultId}', [ProductionPicProductionController::class, 'updateResult']);
+        Route::delete('/results/{resultId}', [ProductionPicProductionController::class, 'deleteResult']);
+        Route::get('/results/{resultId}', [ProductionPicProductionController::class, 'getResult']);
    });
 });

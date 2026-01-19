@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProductionController extends Controller
 {
+    /* GET ALL PRODUCTIONS */
     public function index()
     {
         $limit = min(request('limit', 10), 30);
@@ -37,6 +38,7 @@ class ProductionController extends Controller
         ]);
     }
 
+    /* GET PRODUCTION BY ID */
     public function show($productionId)
     {
         $production = Production::with(['order', 'assignedTo', 'productionDetails', 'productionDetails.inHouseDetail', 'productionDetails.vendorDetail', 'productionResults', 'order.statusHistory'])
@@ -56,12 +58,14 @@ class ProductionController extends Controller
         ]);
     }
 
+    /* CONFIRMED PRODUCTION */
     public function confirmProduction($productionId)
     {
         $production = Production::with('order')->findOrFail($productionId);
         
         $existedResult = $production->productionResult()->exists();
 
+        // Prevent confirmation if no production result exists
         if (!$existedResult) {
             return response()->json([
                 'success' => false,
@@ -73,6 +77,7 @@ class ProductionController extends Controller
             ->where('status_stage', 'ready')
             ->exists();
 
+        // Prevent duplicate confirmation
         if ($alreadyConfirmed) {
             return response()->json([
                 'success' => false,
@@ -81,12 +86,14 @@ class ProductionController extends Controller
         }
 
         DB::transaction(function () use ($production) {
+            // Close current status stage by setting end_time
             StatusHistory::where('order_id', $production->order_id)
                 ->whereNull('end_time')
                 ->update([
                     'end_time' => now()
                 ]);
 
+            // Create new 'ready' status (production complete, awaiting shipment)
             StatusHistory::create([
                 'order_id' => $production->order_id,
                 'status_stage' => 'ready',

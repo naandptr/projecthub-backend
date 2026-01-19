@@ -9,73 +9,7 @@ use App\Models\Order;
 
 class ProgressTrackController extends Controller
 {
-    // public function index()
-    // {
-    //     $orders = Order::with([
-    //         'design.assignedTo',
-    //         'production.assignedTo',
-    //         'statusHistory'
-    //     ])->get();
-
-    //     $data = $orders->map(function ($order) {
-
-    //         $estimatedDuration = Carbon::parse($order->order_date)
-    //             ->diffInDays(Carbon::parse($order->order_deadline));
-
-    //         $designStatus = $order->statusHistory
-    //             ->where('status_stage', 'designing')
-    //             ->sortByDesc('start_time')
-    //             ->first();
-
-    //         $designDuration = $designStatus && $designStatus->end_time
-    //             ? Carbon::parse($designStatus->start_time)
-    //                 ->diffInHours(Carbon::parse($designStatus->end_time))
-    //             : null;
-
-    //         $productionStatus = $order->statusHistory
-    //             ->where('status_stage', 'in_production')
-    //             ->sortByDesc('start_time')
-    //             ->first();
-
-    //         $productionDuration = $productionStatus && $productionStatus->end_time
-    //             ? Carbon::parse($productionStatus->start_time)
-    //                 ->diffInHours(Carbon::parse($productionStatus->end_time))
-    //             : null;
-
-    //         return [
-    //             'order_id' => $order->id,
-
-    //             'order' => [
-    //                 'product_name' => $order->product_name,
-    //                 'order_number' => $order->order_number,
-    //                 'order_date'   => $order->order_date,
-    //                 'deadline'     => $order->order_deadline,
-    //                 'estimated_time_days' => $estimatedDuration,
-    //             ],
-
-    //             'design' => [
-    //                 'pic' => $order->design?->assignedTo?->full_name,
-    //                 'start_time' => $designStatus?->start_time,
-    //                 'end_time'   => $designStatus?->end_time,
-    //                 'duration_hours' => $designDuration,
-    //             ],
-
-    //             'production' => [
-    //                 'pic' => $order->production?->assignedTo?->full_name,
-    //                 'start_time' => $productionStatus?->start_time,
-    //                 'end_time'   => $productionStatus?->end_time,
-    //                 'duration_hours' => $productionDuration,
-    //             ],
-    //         ];
-    //     });
-
-    //     return response()->json([
-    //         'status' => true,
-    //         'message' => 'Order progress list',
-    //         'data' => $data
-    //     ]);
-    // }
-
+    /* GET ALL ORDERS */
     public function index()
     {
         $limit = min(request('limit', 10), 30);
@@ -88,6 +22,7 @@ class ProgressTrackController extends Controller
         ->paginate($limit);
 
         $orders->getCollection()->transform(function ($order) {
+            // Calculate estimated project duration in days (from order date to deadline)
             $estimatedDuration = Carbon::parse($order->order_date)
                 ->diffInDays(Carbon::parse($order->order_deadline));
 
@@ -96,6 +31,7 @@ class ProgressTrackController extends Controller
                 ->sortByDesc('start_time')
                 ->first();
 
+            // Calculate actual design phase duration in hours (if completed)
             $designDuration = $designStatus && $designStatus->end_time
                 ? Carbon::parse($designStatus->start_time)
                     ->diffInHours(Carbon::parse($designStatus->end_time))
@@ -106,6 +42,7 @@ class ProgressTrackController extends Controller
                 ->sortByDesc('start_time')
                 ->first();
 
+            // Calculate actual production phase duration in hours (if completed)
             $productionDuration = $productionStatus && $productionStatus->end_time
                 ? Carbon::parse($productionStatus->start_time)
                     ->diffInHours(Carbon::parse($productionStatus->end_time))

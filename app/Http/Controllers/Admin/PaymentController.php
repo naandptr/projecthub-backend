@@ -4,35 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Shipment;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
-    // public function index()
-    // {
-    //     $orders = Order::with(['payment', 'shipment'])
-    //         ->orderBy('id', 'desc')
-    //         ->get();
-
-    //     $data = $orders->map(function($order) {
-    //         return [
-    //             'order_id' => $order->id,
-    //             'order_number' => $order->order_number,
-    //             'customer' => $order->cust_name,
-    //             'amount' => $order->product_price * $order->product_quantity,
-    //             'payments' => $order->payment,
-    //             'shipment' => $order->shipment,
-    //         ];
-    //     });
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data' => $data
-    //     ]);
-    // }
-
+    /* GET ALL ORDER */
     public function index()
     {
         $limit = min(request('limit', 10), 30);
@@ -64,6 +43,7 @@ class PaymentController extends Controller
         ]);
     }
 
+    /* GET PAYMENT BY ID */
     public function show($orderId)
     {
         $payment = Payment::with([
@@ -84,6 +64,7 @@ class PaymentController extends Controller
         ]);
     }
 
+    /* CREATE PAYMENT */
     public function store(Request $request, $orderId)
     {
         $request->validate([
@@ -95,12 +76,13 @@ class PaymentController extends Controller
         try {
             $order = Order::with('payment')->findOrFail($orderId);
 
-            $amount = $order->product_price * $order->product_quantity;
+            $amount = $order->product_price * $order->product_quantity; // Calculate total order amount
 
-            $totalPaid = $order->payment->sum('payment_amount');
+            $totalPaid = $order->payment->sum('payment_amount'); // Calculate total amount already paid
 
-            $remaining = $amount - $totalPaid;
+            $remaining = $amount - $totalPaid; // Calculate remaining balance
 
+            // Prevent payment if order is already fully paid
             if ($remaining <= 0) {
                 return response()->json([
                     'success' => false,
@@ -108,6 +90,7 @@ class PaymentController extends Controller
                 ], 422);
             }
 
+            // Prevent overpayment
             if ($request->payment_amount > $remaining) {
                 return response()->json([
                     'success' => false,
@@ -115,6 +98,7 @@ class PaymentController extends Controller
                 ], 422);
             }
 
+            // Determine payment type and status based on amount
             if ($request->payment_amount < $remaining) {
                 $paymentType = 'down_payment';
                 $paymentStatus = 'half_paid';
@@ -153,6 +137,7 @@ class PaymentController extends Controller
         }
     }
 
+    /* UPDATE PAYMENT */
     public function update(Request $request, $paymentId)
     {
         $request->validate([
@@ -166,16 +151,20 @@ class PaymentController extends Controller
 
             $order = $payment->order;
 
-            $amount = $order->product_price * $order->product_quantity;
+            $amount = $order->product_price * $order->product_quantity; // Calculate total order amount
 
-            $totalPaidExceptThis = $order->payment
+            // Calculate total paid excluding the current payment being updated
+            $totalPaidExceptThis = $order->payment 
                 ->where('id', '!=', $payment->id)
                 ->sum('payment_amount');
 
-            $newPaymentAmount = $request->payment_amount ?? $payment->payment_amount;
+            // Use new amount if provided, otherwise keep existing amount
+            $newPaymentAmount = $request->payment_amount ?? $payment->payment_amount; 
 
+            // Calculate new total paid with updated payment amount
             $newTotalPaid = $totalPaidExceptThis + $newPaymentAmount;
 
+            // Prevent update if it would cause overpayment
             if ($newTotalPaid > $amount) {
                 return response()->json([
                     'success' => false,
@@ -183,6 +172,7 @@ class PaymentController extends Controller
                 ], 422);
             }
 
+            // Determine payment type and status based on new total
             if ($newTotalPaid < $amount) {
                 $paymentType = 'down_payment';
                 $paymentStatus = 'half_paid';
@@ -219,9 +209,22 @@ class PaymentController extends Controller
         }
     }
 
+    /* DELETE PAYMENT */
     public function destroy($paymentId)
     {
-        Payment::findOrFail($paymentId)->delete();
+        $payment = Payment::findOrFail($paymentId);
+
+        // Prevent deletion if order has shipment record (order is completed/shipped)
+        if (
+            Shipment::where('order_id', $payment->order_id)->exists() 
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The order is at the completed stage!'
+            ], 400);
+        }
+
+        $payment->delete();
 
         return response()->json([
             'success' => true,

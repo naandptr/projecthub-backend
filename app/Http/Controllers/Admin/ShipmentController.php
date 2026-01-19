@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ShipmentController extends Controller
 {
+    /* GET SHIPMENT BY ID */
     public function show($orderId)
     {
         $shipment = Shipment::with([
@@ -31,6 +32,7 @@ class ShipmentController extends Controller
         ]);
     }
 
+    /* CREATE SHIPMENT */
     public function store(Request $request, $orderId)
     {
         $order = Order::findOrFail($orderId);
@@ -48,6 +50,7 @@ class ShipmentController extends Controller
             ->latest('created_at')
             ->first();
 
+        // Only allow shipment creation if order status is 'ready'
         if ($latestStatus && $latestStatus->status_stage === 'ready') {
             $shipment = Shipment::create([
                 'order_id' => $orderId,
@@ -59,12 +62,14 @@ class ShipmentController extends Controller
                 'shipment_notes' => $request->shipment_notes,
             ]);
 
+            // Close current status stage by setting end_time
             StatusHistory::where('order_id', $order->id)
                 ->whereNull('end_time')
                 ->update([
                     'end_time' => now()
                 ]);
 
+            // Create 'completed' status history (order is now shipped/completed)
             StatusHistory::create([
                 'order_id' => $order->id,
                 'status_stage' => 'completed',
@@ -85,6 +90,7 @@ class ShipmentController extends Controller
             'message' => 'Order is not yet in ready stage!'], 400);
     }
 
+    /* UPDATE SHIPMENT */
     public function update(Request $request, $shipmentId)
     {
         $shipment = Shipment::findOrFail($shipmentId);
@@ -105,6 +111,7 @@ class ShipmentController extends Controller
         ]);
     }
 
+    /* DELETE SHIPMENT */
     public function destroy($shipmentId)
     {
         Shipment::findOrFail($shipmentId)->delete();

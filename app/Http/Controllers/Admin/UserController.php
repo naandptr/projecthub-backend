@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    /* GET USER BY ROLE */
     public function getUsersByRole($role)
     {
         $users = User::whereHas('role', function ($q) use ($role) {
@@ -36,6 +37,6 @@ class UserController extends Controller
 
         return response()->json([
             'success' => false, 
-            'message' => 'Siapa lu mau liat-liat :P'], 403);
+            'message' => 'Forbidden access.'], 403);
     }
 }

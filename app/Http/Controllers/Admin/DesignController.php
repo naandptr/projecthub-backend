@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class DesignController extends Controller
 {
+    /* GET ALL DESIGNS */
     public function index()
     {
         $limit = min(request('limit', 10), 30);
@@ -30,9 +31,10 @@ class DesignController extends Controller
         ->paginate($limit);
 
         $designs->getCollection()->transform(function ($design) {
-            $approvalStatus = true;
-            $imageCover = $design->order->order_file;
+            $approvalStatus = true; // Default approval status
+            $imageCover = $design->order->order_file; // Default cover image
 
+            // Process design items if any exist
             if ($design->designItems->isNotEmpty()) {
                 $approvedItem = $design->designItems
                     ->where('design_status', 'approved')
@@ -40,15 +42,17 @@ class DesignController extends Controller
                     ->first();
 
                 if ($approvedItem) {
-                    $imageCover = $approvedItem->design_file;
+                    $imageCover = $approvedItem->design_file; // Use approved design as cover image
                     $approvalStatus = true;
                 } else {
+                    // Get the latest design item (any status)
                     $latestItem = $design->designItems
                         ->sortByDesc('created_at')
                         ->first();
 
                     $imageCover = $latestItem?->design_file;
-
+                    
+                    // Check if any design item is still in progress
                     if ($design->designItems->contains('design_status', 'in_progress')) {
                         $approvalStatus = false;
                     } else {
@@ -80,6 +84,7 @@ class DesignController extends Controller
         ]);
     }
 
+    /* GET DESIGN BY ID */
     public function show($designId)
     {
         $design = Design::with(['order', 'assignedTo', 'designItems', 'order.statusHistory'])
@@ -99,6 +104,7 @@ class DesignController extends Controller
         ]);
     }
 
+    /* UPDATE ITEM STATUS (APPROVED/REVISION) */
     public function updateItemStatus(Request $request, $itemId)
     {
         $request->validate([
@@ -114,6 +120,7 @@ class DesignController extends Controller
             ], 400);
         }
 
+        // Prevent multiple approved items for the same design
         if ($request->design_status === 'approved') {
             $alreadyApproved = DesignItem::where('design_id', $item->design_id)
                 ->where('design_status', 'approved')
@@ -139,6 +146,7 @@ class DesignController extends Controller
         ]);
     }
 
+    /* CONFIRM DESIGN */
     public function confirmDesign($designId)
     {
         $design = Design::with('order')->findOrFail($designId);
@@ -147,6 +155,7 @@ class DesignController extends Controller
             ->where('design_status', 'approved')
             ->exists();
 
+        // Prevent confirmation if no approved design exists
         if (!$approvedItem) {
             return response()->json([
                 'success' => false,
@@ -158,6 +167,7 @@ class DesignController extends Controller
             ->where('status_stage', 'confirmed')
             ->exists();
 
+        // Prevent duplicate confirmation
         if ($alreadyConfirmed) {
             return response()->json([
                 'success' => false,
@@ -166,12 +176,14 @@ class DesignController extends Controller
         }
 
         DB::transaction(function () use ($design) {
+            // Close the current status stage by setting end_time
             StatusHistory::where('order_id', $design->order_id)
                 ->whereNull('end_time')
                 ->update([
                     'end_time' => now()
                 ]);
 
+            // Create new 'confirmed' status history entry
             StatusHistory::create([
                 'order_id' => $design->order_id,
                 'status_stage' => 'confirmed',

@@ -416,8 +416,8 @@ class ProductionController extends Controller
             if ($productionType === 'vendor') {
                 $detailValidator = Validator::make($request->all(), [
                     'vendor_name' => 'required|string|max:255',
-                    'start_date' => 'required|date|date_format:Y-m-d',
-                    'deadline' => 'required|date|date_format:Y-m-d|after:start_date',
+                    'start_date' => 'required|date',
+                    'deadline' => 'required|date|after:start_date',
                 ]);
 
                 if ($detailValidator->fails()) {
@@ -429,8 +429,8 @@ class ProductionController extends Controller
                 }
             } elseif ($productionType === 'in_house') {
                 $detailValidator = Validator::make($request->all(), [
-                    'start_date' => 'required|date|date_format:Y-m-d',
-                    'end_date' => 'required|date|date_format:Y-m-d|after:start_date',
+                    'start_date' => 'required|date',
+                    'end_date' => 'required|date',
                     'production_budget' => 'required|numeric|min:0',
                 ]);
 
@@ -527,8 +527,8 @@ class ProductionController extends Controller
             if ($detail->production_type === 'vendor') {
                 $validator = Validator::make($request->all(), [
                     'vendor_name' => 'required|string|max:255',
-                    'start_date' => 'required|date|date_format:Y-m-d',
-                    'deadline' => 'required|date|date_format:Y-m-d|after:start_date',
+                    'start_date' => 'required|date',
+                    'deadline' => 'required|date',
                 ]);
 
                 if ($validator->fails()) {
@@ -549,8 +549,8 @@ class ProductionController extends Controller
 
             } elseif ($detail->production_type === 'in_house') {
                 $validator = Validator::make($request->all(), [
-                    'start_date' => 'required|date|date_format:Y-m-d',
-                    'end_date' => 'required|date|date_format:Y-m-d|after:start_date',
+                    'start_date' => 'required|date',
+                    'end_date' => 'required|date',
                     'production_budget' => 'required|numeric|min:0',
                 ]);
 

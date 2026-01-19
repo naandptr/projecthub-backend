@@ -9,6 +9,7 @@ use App\Models\User;
 
 class RoleController extends Controller
 {
+    /* GET ALL ROLES */
     public function index()
     {
         $limit = min(request('limit', 10), 30);
@@ -30,17 +31,9 @@ class RoleController extends Controller
         ]);
     }
 
+    /* CREATE ROLE */
     public function store(Request $request)
-    {
-        $existsRole = Role::where('role_name', $request->role_name)->exists();
-
-        if ($existsRole) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Role name already in use!'
-            ], 400);
-        }
-        
+    {       
         $request->validate([
             'role_name' => 'required|string|max:255|unique:roles,role_name'
         ]);
@@ -59,19 +52,9 @@ class RoleController extends Controller
         ]);
     }
 
+    /* UPDATE ROLE */
     public function update(Request $request, $roleId)
-    {
-        $existsRole = Role::where('role_name', $request->role_name)
-        ->where('id', '!=', $roleId)
-        ->exists();
-
-        if ($existsRole) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Role name already in use!'
-            ], 400);
-        }
-
+    {        
         $request->validate([
             'role_name' => 'required|string|max:255|unique:roles,role_name,' . $roleId
         ]);
@@ -87,17 +70,12 @@ class RoleController extends Controller
         ]);
     }
 
+    /* DELETE ROLE*/
     public function destroy($roleId)
     {
         $role = Role::findOrFail($roleId);
 
-        if (!$role) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Role not found'
-            ], 404);
-        }
-
+        // Prevent deletion if role is assigned to any users
         if (
             User::where('role_id', $role->id)->exists()
         ) {
