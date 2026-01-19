@@ -111,14 +111,14 @@ class ProductionController extends Controller
                 $responseData['vendor_detail'] = [
                     'id' => $detail->vendorDetail->id,
                     'vendor_name' => $detail->vendorDetail->vendor_name,
-                    'start_date' => $detail->vendorDetail->start_date,
-                    'deadline' => $detail->vendorDetail->deadline,
+                    'start_date' => $detail->vendorDetail->start_date->format('Y-m-d'),
+                    'deadline' => $detail->vendorDetail->deadline->format('Y-m-d'),
                 ];
             } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
                 $responseData['inhouse_detail'] = [
                     'id' => $detail->inhouseDetail->id,
-                    'start_date' => $detail->inhouseDetail->start_date,
-                    'end_date' => $detail->inhouseDetail->end_date,
+                    'start_date' => $detail->inhouseDetail->start_date->format('Y-m-d'),
+                    'end_date' => $detail->inhouseDetail->end_date->format('Y-m-d'),
                     'production_budget' => $detail->inhouseDetail->production_budget,
                 ];
             }
