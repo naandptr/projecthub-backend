@@ -27,6 +27,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    Route::put('/change-password', [AuthController::class, 'changePassword']);
+
     Route::get('/dashboard', function () {
         return response()->json(["message" => "Dashboard Access"]);
     })->middleware('role:superadmin,admin,designer_pic,production_pic');
