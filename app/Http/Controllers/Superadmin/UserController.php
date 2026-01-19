@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    /* GET ALL USERS */
     public function index()
     {
         $limit = min(request('limit', 10), 30);
@@ -33,6 +34,7 @@ class UserController extends Controller
         ]);
     }
 
+    /* GET USER BY ID */
     public function show($userId)
     {
         $user = User::with('role')->find($userId);
@@ -50,26 +52,9 @@ class UserController extends Controller
         ]);
     }
 
+    /* CREATE USER */
     public function store(Request $request)
-    {
-        $existsUser = User::where('username', $request->username)->exists();
-
-        if ($existsUser) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Username already in use!'
-            ], 400);
-        }
-
-        $existsEmail = User::where('email', $request->email)->exists();
-
-        if ($existsEmail) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email already in use!'
-            ], 400);
-        }
-
+    {        
         $request->validate([
             'role_id'   => 'required|exists:roles,id',
             'full_name' => 'required|string|max:100',
@@ -77,7 +62,7 @@ class UserController extends Controller
             'email'     => 'nullable|email|unique:users,email'
         ]);
 
-        $defaultPassword = User::generateDefaultPassword();
+        $defaultPassword = User::generateDefaultPassword(); // Generate default password for new user (123456)
 
         $user = User::create([
             'role_id'    => $request->role_id,
@@ -85,7 +70,7 @@ class UserController extends Controller
             'username'   => $request->username,
             'email'      => $request->email,
             'password'   => Hash::make($defaultPassword),
-            'is_default_password' => true,
+            'is_default_password' => true, // Flag to require password change on first login
             'user_status' => User::STATUS_PENDING
         ]);
 
@@ -102,30 +87,9 @@ class UserController extends Controller
         ]);
     }
 
+    /* UPDATE USER */
     public function update(Request $request, $userId)
-    {
-        $existsUser = User::where('username', $request->username)
-        ->where('id', '!=', $userId)
-        ->exists();
-
-        $existsEmail = User::where('email', $request->email)
-        ->where('id', '!=', $userId)
-        ->exists();
-
-        if ($existsUser) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Username already in use!'
-            ], 400);
-        }
-
-        if ($existsEmail) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email already in use!'
-            ], 400);
-        }
-
+    {        
         $request->validate([
             'full_name' => 'string|max:100',
             'username'  => 'string|max:50|unique:users,username,' . $userId,
@@ -149,16 +113,10 @@ class UserController extends Controller
         ]);
     }
 
+    /* RESET PASSWORD USER */
     public function resetPassword($userId)
     {
         $user = User::findOrFail($userId);
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
-        }
 
         $defaultPassword = User::generateDefaultPassword();
 
@@ -174,23 +132,19 @@ class UserController extends Controller
         ]);
     }
 
+    /* DELETE USER */
     public function destroy($userId)
     {
         $user = User::findOrFail($userId);
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
-        }
-
+        
+        // Prevent deletion of active users (only pending/inactive users can be deleted)
         if ($user->user_status == 'active') {
             return response()->json([
                 'success' => false, 
                 'message' => 'Cannot delete active user!'], 400);
         }
 
+        // Prevent deletion if user has associated records in other tables
         if (
             Order::where('created_by', $user->id)->exists() ||
             Design::where('assigned_to', $user->id)->exists() ||

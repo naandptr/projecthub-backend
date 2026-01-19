@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 
 class OrderController extends Controller
 {
+    /* GET ALL ORDERS */
     public function index()
     {
         $limit = min(request('limit', 10), 30);
@@ -38,6 +39,7 @@ class OrderController extends Controller
         ]);
     }
 
+    /* GET ORDER BY ID */
     public function show($orderId)
     {
         $order = Order::with([
@@ -62,6 +64,7 @@ class OrderController extends Controller
         ]);
     }
 
+    /* CREATE ORDER */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -82,10 +85,10 @@ class OrderController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
-
+            // Handle file upload if present
             if ($request->hasFile('order_file')) {
                 $file = $request->file('order_file');
-
+                // Compress image files
                 if (str_starts_with($file->getMimeType(), 'image/')) {
                     $validated['order_file'] = Order::compressAndStoreImage($file);
                 } else {
@@ -93,30 +96,41 @@ class OrderController extends Controller
                 }
             }
 
+            // Generate unique order number and set creator
             $validated['order_number'] = Order::generateOrderNumber();
             $validated['created_by'] = auth()->id();
 
             $order = Order::create($validated);
 
+            // Create design assignment (with or without assigned user)
             if ($request->assigned_to_design) {
                 Design::create([
                     'order_id' => $order->id,
                     'assigned_to' => $request->assigned_to_design,
                 ]);
+            } else {
+                // Create unassigned design record
+                Design::create([
+                    'order_id' => $order->id,
+                    'assigned_to' => null,
+                ]);
             }
 
+            // Create production assignment (with or without assigned user)
             if ($request->assigned_to_production) {
                 Production::create([
                     'order_id' => $order->id,
                     'assigned_to' => $request->assigned_to_production,
                 ]);
             } else {
+                // Create unassigned production record
                 Production::create([
                     'order_id' => $order->id,
                     'assigned_to' => null,
                 ]);
             }
 
+            // Initialize order status history as 'pending'
             StatusHistory::create([
                 'order_id' => $order->id,
                 'status_stage' => 'pending',
@@ -133,6 +147,7 @@ class OrderController extends Controller
         });
     }
 
+    /* UPDATE ORDER */
     public function update(Request $request, $orderId)
     {
         $order = Order::findOrFail($orderId);
@@ -154,14 +169,16 @@ class OrderController extends Controller
             'assigned_to_production' => 'nullable|exists:users,id',
         ]);
 
+        // Handle file replacement if new file is uploaded
         if ($request->hasFile('order_file')) {
-
+            // Delete old file if it exists
             if ($order->order_file && Storage::disk('public')->exists($order->order_file)) {
                 Storage::disk('public')->delete($order->order_file);
             }
 
             $file = $request->file('order_file');
 
+            // Compress and store image files
             if (str_starts_with($file->getMimeType(), 'image/')) {
                 $order->order_file = Order::compressAndStoreImage($file);
             } else {
@@ -182,6 +199,7 @@ class OrderController extends Controller
             'invoice_url',
         ]));
 
+        // Update or create design assignment if provided
         if ($request->filled('assigned_to_design')) {
             $order->design()->updateOrCreate(
                 ['order_id' => $order->id],
@@ -189,6 +207,7 @@ class OrderController extends Controller
             );
         }
 
+        // Update or create production assignment if provided
         if ($request->filled('assigned_to_production')) {
             $order->production()->updateOrCreate(
                 ['order_id' => $order->id],
@@ -203,6 +222,7 @@ class OrderController extends Controller
         ]);
     }
 
+    /* DELETE ORDER */
     public function destroy($orderId)
     {
         $order = Order::findOrFail($orderId);
@@ -211,6 +231,7 @@ class OrderController extends Controller
             ->where('status_stage', 'confirmed')
             ->first();
 
+        // Only allow deletion if order hasn't been confirmed
         if (!$orderDelete) {
             if ($order->order_file && Storage::disk('public')->exists($order->order_file)) {
             Storage::disk('public')->delete($order->order_file);
@@ -230,6 +251,7 @@ class OrderController extends Controller
         ], 400);
     }
 
+    /* GET ALL COMPLETED ORDER */
     public function completed()
     {
         $limit = min(request('limit', 10), 30);
