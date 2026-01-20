@@ -828,10 +828,8 @@ class ProductionController extends Controller
                 'data' => [
                     'id' => $result->productionResults->id,
                     'production_id' => $productionId, 
-                    'production_file' => $result->production_file,
-                    'file_url' => asset('storage/' . $result->production_file),
-                    'created_at' => $result->created_at,
-                    'updated_at' => $result->updated_at,
+                    'production_file' => $result->productionResults->production_file,
+                    'file_url' => asset('storage/' . $result->productionResults->production_file)
                 ],
             ], 200);
 
