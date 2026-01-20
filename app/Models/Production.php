@@ -18,36 +18,21 @@ class Production extends Model
         'assigned_to',
     ];
 
-    /**
-     * Setiap production punya banyak detail (in_house / vendor).
-     */
     public function productionDetails(): HasMany
     {
         return $this->hasMany(ProductionDetail::class, 'production_id', 'id');
     }
 
-    /**
-     * Setiap production bisa punya banyak hasil (files).
-     * Tabel: production_results
-     * FK: production_id (di production_results)
-     * PK: id (di productions)
-     */
-    public function productionResults(): HasMany
+    public function productionResults()
     {
-        return $this->hasMany(ProductionResult::class, 'production_id', 'id');
-    }
-
-    /**
-     * Relasi ke Orders.
-     */
+        return $this->hasOne(ProductionResult::class, 'production_id', 'id');
+    }    
+    
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id', 'id');
-    }
-
-    /**
-     * Relasi ke User (PIC produksi).
-     */
+    }    
+    
     public function assignedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to', 'id');

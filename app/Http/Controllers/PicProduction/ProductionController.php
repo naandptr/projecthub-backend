@@ -816,17 +816,18 @@ class ProductionController extends Controller
     /**
      * GET PRODUCTION RESULT BY ID
      */
-    public function getResult($resultId)
+    public function getResult($productionId)
     {
         try {
-            $result = ProductionResult::findOrFail($resultId);
+
+            $result = Production::with('productionResults')->findOrFail($productionId);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Production result retrieved successfully',
                 'data' => [
-                    'id' => $result->id,
-                    'production_id' => $result->production_id,  // ✅ CORRECT KEY
+                    'id' => $result->productionResults->id,
+                    'production_id' => $productionId, 
                     'production_file' => $result->production_file,
                     'file_url' => asset('storage/' . $result->production_file),
                     'created_at' => $result->created_at,
