@@ -109,16 +109,5 @@ class ShipmentController extends Controller
             'message' => 'Shipment updated succesfully',
             'data' => $shipment
         ]);
-    }
-
-    /* DELETE SHIPMENT */
-    public function destroy($shipmentId)
-    {
-        Shipment::findOrFail($shipmentId)->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Shipment deleted successfully',
-        ]);
-    }
+    }    
 }

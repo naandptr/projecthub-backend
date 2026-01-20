@@ -8,16 +8,14 @@ use App\Models\Design;
 use App\Models\DesignItem;
 use App\Models\StatusHistory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class DesignController extends Controller
 {
-    /**
-     * GET /api/designer/tasks
-     * INDEX: Get all my tasks (orders assigned to me)
-     */
-    public function index(Request $request)
+    /* GET ALL DESIGNS */
+    public function index()
     {
         try {
             $userId = auth()->user()->id;
@@ -73,11 +71,8 @@ class DesignController extends Controller
         }
     }
 
-    /**
-     * GET /api/designer/tasks/{orderId}
-     * SHOW: Get detail order dan design items
-     */
-    public function show(Request $request, $orderId)
+    /* GET DESIGN BY ID */
+    public function show($orderId)
     {
         try {
             $userId = auth()->user()->id;
@@ -154,145 +149,140 @@ class DesignController extends Controller
         }
     }
 
-public function start(Request $request, $orderId)
-{
-    DB::beginTransaction();
-    try {
-        $userId = auth()->user()->id;
+    /* START DESIGN */
+    public function start($orderId)
+    {
+        DB::beginTransaction();
+        try {
+            $userId = auth()->user()->id;
 
-        // Cek order ada
-        $order = Order::with('design')->findOrFail($orderId);
+            $order = Order::with('design')->findOrFail($orderId);
 
-        if (!$order->design) {
-            throw new \Exception('Design not found for this order');
-        }
+            // Validate design exists
+            if (!$order->design) {
+                throw new \Exception('Design not found for this order');
+            }
 
-        // ✅ FIX: Jika sudah di-assign ke saya, boleh continue
-        // Jika di-assign ke orang lain, throw error
-        if ($order->design->assigned_to !== null && $order->design->assigned_to !== $userId) {
-            throw new \Exception('This order already assigned to another designer');
-        }
+            // Prevent starting design if already assigned to another designer
+            if ($order->design->assigned_to !== null && $order->design->assigned_to !== $userId) {
+                throw new \Exception('This order already assigned to another designer');
+            }
 
-        // Jika sudah di-assign ke saya, return success
-        if ($order->design->assigned_to === $userId) {
+            // Handle case where designer is resuming their own design work
+            if ($order->design->assigned_to === $userId) {
+                $hasDesigning = $order->statusHistory()
+                    ->where('status_stage', 'designing')
+                    ->exists();
 
-        // Cek apakah sudah ada status designing
-        $hasDesigning = $order->statusHistory()
-            ->where('status_stage', 'designing')
-            ->exists();
+                // Create 'designing' status if it doesn't exist yet
+                if (!$hasDesigning) {
+                    StatusHistory::where('order_id', $order->order_id)
+                        ->whereNull('end_time')
+                        ->update([
+                            'end_time' => now()
+                        ]);
+                    // Create new 'designing' status
+                    StatusHistory::create([
+                        'order_id' => $orderId,
+                        'status_stage' => 'designing',
+                        'updated_by' => Auth::id(),
+                        'start_time' => now(),
+                        'end_time' => null
+                    ]);
+                }
 
-        // Jika belum ada, buat
-        if (!$hasDesigning) {
-            StatusHistory::where('order_id', $order->design->order_id)
-                ->whereNull('end_time')
-                ->update([
-                    'end_time' => now()
+                $latestStatus = $order->statusHistory()->latest('start_time')->first();
+
+                DB::commit();
+                return response()->json([
+                    'success' => true,
+                    'message' => 'You are already working on this design',
+                    'data' => [
+                        'order_id' => $orderId,
+                        'design_id' => $order->design->id,
+                        'status' => $latestStatus?->status_stage ?? 'designing',
+                        'assigned_to' => $userId,
+                    ],
+                ]);
+            }
+
+            // Assign the design to current user (first-time assignment)
+            $order->design->update([
+                'assigned_to' => $userId,
             ]);
-                
+
             StatusHistory::create([
                 'order_id' => $orderId,
                 'status_stage' => 'designing',
-                'updated_by' => auth()->id(),
+                'updated_by' => $userId,
                 'start_time' => now(),
-                'end_time' => null
             ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Design task started',
+                'data' => [
+                    'order_id' => $orderId,
+                    'design_id' => $order->design->id,
+                    'status' => 'designing',
+                    'assigned_to' => $userId,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $latestStatus = $order->statusHistory()->latest('start_time')->first();
-
-        DB::commit();
-        return response()->json([
-            'success' => true,
-            'message' => 'You are already working on this design',
-            'data' => [
-                'order_id' => $orderId,
-                'design_id' => $order->design->id,
-                'status' => $latestStatus?->status_stage ?? 'designing',
-                'assigned_to' => $userId,
-            ],
-        ]);
     }
 
-        // ✅ Jika belum di-assign, assign sekarang
-        $order->design->update([
-            'assigned_to' => $userId,
-        ]);
-
-        // Create status history
-        StatusHistory::create([
-            'order_id' => $orderId,
-            'status_stage' => 'designing',
-            'updated_by' => $userId,
-            'start_time' => now(),
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Design task started',
-            'data' => [
-                'order_id' => $orderId,
-                'design_id' => $order->design->id,
-                'status' => 'designing',
-                'assigned_to' => $userId,
-            ],
-        ]);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json([
-            'success' => false,
-            'message' => 'Error: ' . $e->getMessage(),
-        ], 500);
-    }
-}
-
-     public function storeItem(Request $request, $itemId)
-    {
-        // ✅ VALIDATION
+    /* ADD DESIGN ITEM */
+    public function storeItem(Request $request, $itemId)
+    {       
         $request->validate([
             'design_file' => 'required|file|mimes:jpg,jpeg,png,pdf,ai,psd|max:10240',
             'design_notes' => 'nullable|string|max:500',
         ]);
 
         DB::beginTransaction();
+
         try {
             $userId = auth()->user()->id;
-            $designId = (int) $itemId; // URL parameter adalah design_id
-
-            // ✅ STEP 1: Find design
+            $designId = (int) $itemId;
             $design = Design::find($designId);
+            
+            // Validate design exists
             if (!$design) {
                 throw new \Exception("Design ID {$designId} not found");
             }
-
-            // ✅ STEP 2: Verify authorization
+            
+            // Ensure only assigned designer can upload design items
             if ($design->assigned_to !== $userId) {
                 throw new \Exception('Forbidden - You do not have permission to upload for this design');
-            }
-
-            // ✅ STEP 3: Upload file
+            }            
+            
             $file = $request->file('design_file');
             $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
             $path = $file->storeAs('designs', $filename, 'public');
 
             if (!$path) {
                 throw new \Exception('Failed to upload file to storage');
-            }
-
-            // ✅ STEP 4: Create design item
+            }            
+            
             $designItem = DesignItem::create([
                 'design_id' => $designId,
                 'design_file' => $path,
                 'design_notes' => $request->input('design_notes') ?? null,
-                'design_status' => 'in_progress', // Status awal
+                'design_status' => 'in_progress', 
             ]);
 
             if (!$designItem) {
                 throw new \Exception('Failed to create design item record');
-            }
-
-            // ✅ STEP 5: Commit transaction
+            }            
+            
             DB::commit();
 
             return response()->json([
@@ -311,8 +301,7 @@ public function start(Request $request, $orderId)
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            // Cleanup file if upload failed
+
             if (isset($path) && Storage::disk('public')->exists($path)) {
                 Storage::disk('public')->delete($path);
             }
@@ -324,11 +313,8 @@ public function start(Request $request, $orderId)
         }
     }
 
-   /**
- * PUT /api/designer/design-items/{itemId}
- * UPDATE: Update design item (file/notes)
- */
-public function updateItem(Request $request, $itemId)
+    /* UPDATE DESIGN ITEM */
+    public function updateItem(Request $request, $itemId)
     {
         $request->validate([
             'design_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,ai,psd|max:10240',
@@ -440,8 +426,8 @@ public function updateItem(Request $request, $itemId)
         }
     }
 
-
-    public function destroyItem(Request $request, $itemId)
+    /* DELETE DESIGN ITEM */
+    public function destroyItem($itemId)
     {
         DB::beginTransaction();
         try {

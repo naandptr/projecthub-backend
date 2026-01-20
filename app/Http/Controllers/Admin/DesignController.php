@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use App\Models\Design;
 use App\Models\DesignItem;
 use App\Models\StatusHistory;
@@ -187,7 +186,7 @@ class DesignController extends Controller
             StatusHistory::create([
                 'order_id' => $design->order_id,
                 'status_stage' => 'confirmed',
-                'updated_by' => auth()->id(),
+                'updated_by' => Auth::id(),
                 'start_time' => now(),
                 'end_time' => null
             ]);
