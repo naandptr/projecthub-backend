@@ -116,6 +116,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/details/{detailId}/result', [ProductionPicProductionController::class, 'storeResult']);
         Route::put('/results/{resultId}', [ProductionPicProductionController::class, 'updateResult']);
         Route::delete('/results/{resultId}', [ProductionPicProductionController::class, 'deleteResult']);
-        Route::get('/results/{resultId}', [ProductionPicProductionController::class, 'getResult']);
+        Route::get('/results/{productionId}', [ProductionPicProductionController::class, 'getResult']);
    });
 });
