@@ -856,7 +856,7 @@ class ProductionController extends Controller
                 Storage::disk('public')->delete($result->productionResult->production_file);
             }
 
-            $result->delete();
+            $result->productionResult->delete();
 
             DB::commit();
 
