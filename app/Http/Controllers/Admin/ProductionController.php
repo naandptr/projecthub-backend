@@ -41,7 +41,7 @@ class ProductionController extends Controller
     /* GET PRODUCTION BY ID */
     public function show($productionId)
     {
-        $production = Production::with(['order', 'assignedTo', 'productionDetails', 'productionDetails.inHouseDetail', 'productionDetails.vendorDetail', 'productionResults', 'order.statusHistory'])
+        $production = Production::with(['order', 'assignedTo', 'productionDetails', 'productionDetails.inHouseDetail', 'productionDetails.vendorDetail', 'productionResult', 'order.statusHistory'])
             ->find($productionId);
 
         if (!$production) {
