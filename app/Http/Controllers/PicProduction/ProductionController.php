@@ -23,7 +23,6 @@ class ProductionController extends Controller
     public function index()
     {
         try {
-            $userId = auth()->id();
 
             $productions = Production::whereHas('order.statusHistory', function ($query) {
                     $query->whereIn('status_stage', ['confirmed', 'in_production', 'ready', 'completed'])
@@ -39,8 +38,7 @@ class ProductionController extends Controller
                     },
                     'productionDetails' => function ($q) {
                         $q->with(['vendorDetail', 'inhouseDetail']);
-                    },
-                    'productionResults'
+                    }
                 ])
                 ->orderBy('created_at', 'desc')
                 ->get();
