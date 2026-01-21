@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class Design extends Model
 {
-    use HasFactory; // Add trait ini jika diperlukan
+    use HasFactory; 
 
     protected $table = 'designs';
     protected $primaryKey = 'id';
@@ -16,21 +20,36 @@ class Design extends Model
     protected $fillable = [
         'order_id',
         'assigned_to',
-    ];
+    ];    
 
-    // Relasi ke Order
+    public static function compressAndStoreImage(UploadedFile $file): string
+    {
+        $manager = new ImageManager(new Driver());
+
+        $image = $manager->read($file->getPathname());
+
+        $image->scaleDown(width: 1280);
+
+        $filename = 'designs/' . uniqid() . '.jpg';
+
+        Storage::disk('public')->put(
+            $filename,
+            (string) $image->toJpeg(60)
+        );
+
+        return $filename;
+    }
+    
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'id');
-    }
-
-    // Relasi ke User (Designer yang assign)
+    }    
+    
     public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assigned_to', 'id');
-    }
-
-    // ✅ FIX: Rename to designItems (Plural)
+    }    
+    
     public function designItems()
     {
         return $this->hasMany(DesignItem::class, 'design_id', 'id');

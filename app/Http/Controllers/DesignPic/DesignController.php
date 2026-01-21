@@ -86,9 +86,8 @@ class DesignController extends Controller
                     $query->latest('start_time');
                 },
                 'createdBy',
-            ])->findOrFail($orderId);
-
-            // Verify PIC Design ini punya hak akses
+            ])->findOrFail($orderId);            
+            
             if ($order->design->assigned_to !== $userId) {
                 throw new \Exception('You do not have permission to view this order');
             }
@@ -170,17 +169,18 @@ class DesignController extends Controller
 
             // Handle case where designer is resuming their own design work
             if ($order->design->assigned_to === $userId) {
-                $hasDesigning = $order->statusHistory()
+                $hasDesigning = StatusHistory::where('order_id', $orderId)
                     ->where('status_stage', 'designing')
                     ->exists();
 
                 // Create 'designing' status if it doesn't exist yet
                 if (!$hasDesigning) {
-                    StatusHistory::where('order_id', $order->order_id)
+                    StatusHistory::where('order_id', $orderId)
                         ->whereNull('end_time')
                         ->update([
                             'end_time' => now()
-                        ]);
+                    ]);
+
                     // Create new 'designing' status
                     StatusHistory::create([
                         'order_id' => $orderId,
@@ -263,25 +263,35 @@ class DesignController extends Controller
             if ($design->assigned_to !== $userId) {
                 throw new \Exception('Forbidden - You do not have permission to upload for this design');
             }            
-            
-            $file = $request->file('design_file');
-            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-            $path = $file->storeAs('designs', $filename, 'public');
 
+            // Handle file upload with compression for images
+            $file = $request->file('design_file');
+            $path = null;  // Initialize path variable
+        
+            // Compress and store image files to save storage space
+            if (str_starts_with($file->getMimeType(), 'image/')) {
+                $path = Design::compressAndStoreImage($file);
+            } else {
+                // Store non-image files (PDF, AI, PSD) as is
+                $path = $file->store('designs', 'public');
+            }
+        
+            // Validate file was stored successfully
             if (!$path) {
                 throw new \Exception('Failed to upload file to storage');
-            }            
+            }    
             
+            // Create design item record with uploaded file
             $designItem = DesignItem::create([
                 'design_id' => $designId,
-                'design_file' => $path,
+                'design_file' => $path,  // Use the stored file path
                 'design_notes' => $request->input('design_notes') ?? null,
-                'design_status' => 'in_progress', 
+                'design_status' => 'in_progress',  // Initial status awaiting review
             ]);
 
             if (!$designItem) {
                 throw new \Exception('Failed to create design item record');
-            }            
+            } 
             
             DB::commit();
 
@@ -291,8 +301,8 @@ class DesignController extends Controller
                 'data' => [
                     'item_id' => $designItem->id,
                     'design_id' => $designItem->design_id,
-                    'file_url' => asset('storage/' . $path),
-                    'file_name' => $filename,
+                    'file_url' => asset('storage/' . $designItem->design_file),
+                    'file_name' => basename($designItem->design_file),
                     'notes' => $designItem->design_notes,
                     'status' => $designItem->design_status,
                     'created_at' => $designItem->created_at->format('d M Y H:i:s'),
@@ -326,20 +336,18 @@ class DesignController extends Controller
 
         DB::beginTransaction();
         try {
-            $itemId = (int) $itemId;
-
-            // ✅ STEP 1: Find item with design relation
+            $itemId = (int) $itemId;            
             $designItem = DesignItem::with('design')->find($itemId);
+
             if (!$designItem) {
                 throw new \Exception("Design item ID {$itemId} not found");
-            }
-
-            // ✅ STEP 2: Check authorization (FIX: use user()->id)
+            }            
+            
             if ($designItem->design->assigned_to !== auth()->user()->id) {
                 throw new \Exception('Forbidden - This item is not assigned to you');
-            }
-
-            // ✅ STEP 3: Check status (FIX: Allow both in_progress AND revision)
+            }            
+            
+            // Only allow updates for items in 'in_progress' or 'revision' status
             if (!in_array($designItem->design_status, ['in_progress', 'revision'])) {
                 throw new \Exception(
                     "Cannot update item with status '{$designItem->design_status}'. " .
@@ -348,53 +356,53 @@ class DesignController extends Controller
             }
 
             $updateData = [];
-            $oldFile = $designItem->design_file;
-
-            // ✅ STEP 4: Handle file upload
+            $oldFile = $designItem->design_file; 
+            $newPath = null;  // Initialize path variable for cleanup on error           
+            
             if ($request->hasFile('design_file')) {
                 $file = $request->file('design_file');
-                $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-                $newPath = $file->storeAs('designs', $filename, 'public');
+            
+                // Compress and store image files to save storage space
+                if (str_starts_with($file->getMimeType(), 'image/')) {
+                    $newPath = Design::compressAndStoreImage($file);
+                } else {
+                    // Store non-image files (PDF, AI, PSD) as is
+                    $newPath = $file->store('designs', 'public');
+                }
 
+                // Validate file was stored successfully
                 if (!$newPath) {
                     throw new \Exception('Failed to upload new file');
                 }
 
                 $updateData['design_file'] = $newPath;
-            }
-
-            // ✅ STEP 5: Handle notes update
+            }            
+            
             if ($request->has('design_notes')) {
                 $notes = $request->input('design_notes');
                 $updateData['design_notes'] = $notes;
-            }
-
-            // ✅ STEP 6: Check if ada changes
+            }            
+            
             if (empty($updateData)) {
                 DB::commit();
                 return response()->json([
                     'success' => false,
                     'message' => 'No changes to update. Please provide design_file or design_notes.',
                 ], 422);
-            }
-
-            // ✅ STEP 7: UPDATE DATABASE
-            $affectedRows = $designItem->update($updateData);
-
-            // ✅ DEBUG: Check if update successful
+            }            
+            
+            $affectedRows = $designItem->update($updateData);            
+            
             if (!$affectedRows) {
                 throw new \Exception('Update failed - no rows affected');
-            }
-
-            // ✅ STEP 8: Delete old file if new file uploaded
+            }            
+            
             if (isset($updateData['design_file']) && $oldFile && Storage::disk('public')->exists($oldFile)) {
                 Storage::disk('public')->delete($oldFile);
-            }
-
-            // ✅ STEP 9: Commit transaction
-            DB::commit();
-
-            // ✅ STEP 10: Refresh dan get updated data
+            }            
+            
+            DB::commit();            
+            
             $designItem->refresh();
 
             return response()->json([
@@ -406,15 +414,13 @@ class DesignController extends Controller
                     'file_url' => asset('storage/' . $designItem->design_file),
                     'file_name' => basename($designItem->design_file),
                     'notes' => $designItem->design_notes,
-                    'status' => $designItem->design_status,
-                    // 'status_label' => $designItem->status_label,
+                    'status' => $designItem->design_status,                    
                     'updated_at' => $designItem->updated_at->format('d M Y H:i:s'),
                 ],
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            // Cleanup file jika upload baru gagal
+            DB::rollBack();            
+            
             if (isset($newPath) && Storage::disk('public')->exists($newPath)) {
                 Storage::disk('public')->delete($newPath);
             }
@@ -432,16 +438,20 @@ class DesignController extends Controller
         DB::beginTransaction();
         try {
             $userId = auth()->user()->id;
-            $designItem = DesignItem::with('design')->findOrFail($itemId);
-
-            // Verify user punya hak
+            $designItem = DesignItem::with('design')->findOrFail($itemId);            
+            
             if ($designItem->design->assigned_to !== $userId) {
                 throw new \Exception('You do not have permission to delete this item');
-            }
-
-            // Cek status masih revision
+            }            
+            
+            // Only allow deletion of items with 'revision' status (rejected designs)
             if ($designItem->design_status !== 'revision') {
                 throw new \Exception('Cannot delete design item with status: ' . $designItem->design_status);
+            }
+
+            // Delete associated file from storage if it exists
+            if ($designItem->design_file && Storage::disk('public')->exists($designItem->design_file)) {
+                Storage::disk('public')->delete($designItem->design_file);
             }
 
             $designItem->delete();

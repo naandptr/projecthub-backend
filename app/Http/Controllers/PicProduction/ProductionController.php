@@ -159,7 +159,7 @@ class ProductionController extends Controller
                 'productionDetails' => function ($q) {
                     $q->with(['vendorDetail', 'inhouseDetail']);
                 },
-                'productionResults'
+                'productionResult'
             ])
             ->findOrFail($id);
 
@@ -223,14 +223,14 @@ class ProductionController extends Controller
                         ];
                     }
 
-                    $detailData['results'] = $production->productionResults->map(function ($result) {
-                        return [
-                            'id' => $result->id,
-                            'production_file' => $result->production_file,
-                            'file_url' => Storage::url($result->production_file),
-                            'created_at' => $result->created_at,
-                        ];
-                    });
+                    $productionResult = $production->productionResult;
+
+                    $detailData['results'] = $productionResult ? [[
+                        'id' => $productionResult->id,
+                        'production_file' => $productionResult->production_file,
+                        'file_url' => Storage::url($productionResult->production_file),
+                        'created_at' => $productionResult->created_at,
+                    ]] : [];
 
                     return $detailData;
                 }),
@@ -661,7 +661,41 @@ class ProductionController extends Controller
         }
     }
 
+    /**
+     * GET PRODUCTION RESULT BY ID
+     */
+    public function getResult($productionId)
+    {
+        try {
 
+            $result = Production::with('productionResult')->findOrFail($productionId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Production result retrieved successfully',
+                'data' => [
+                    'id' => $result->productionResult->id,
+                    'production_id' => $productionId, 
+                    'production_file' => $result->productionResult->production_file,
+                    'file_url' => asset('storage/' . $result->productionResult->production_file)
+                ],
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Production result not found',
+            ], 404);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving production result',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    
     /**
      * STORE PRODUCTION RESULT
      */
@@ -813,36 +847,37 @@ class ProductionController extends Controller
         }
     }
 
-    /**
-     * GET PRODUCTION RESULT BY ID
-     */
-    public function getResult($productionId)
+    public function deleteResult($productionId)
     {
+        DB::beginTransaction();
         try {
+            $result = Production::with('productionResult')->findOrFail($productionId);
 
-            $result = Production::with('productionResults')->findOrFail($productionId);
+            // Delete file
+            if ($result->productionResult->production_file && Storage::disk('public')->exists($result->productionResult->production_file)) {
+                Storage::disk('public')->delete($result->productionResult->production_file);
+            }
+
+            $result->delete();
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Production result retrieved successfully',
-                'data' => [
-                    'id' => $result->productionResults->id,
-                    'production_id' => $productionId, 
-                    'production_file' => $result->productionResults->production_file,
-                    'file_url' => asset('storage/' . $result->productionResults->production_file)
-                ],
+                'message' => 'Production result deleted successfully',
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Production result not found',
             ], 404);
-
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Error retrieving production result',
+                'message' => 'Error deleting production result',
                 'error' => $e->getMessage(),
             ], 500);
         }
