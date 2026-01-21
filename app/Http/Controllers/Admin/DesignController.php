@@ -20,7 +20,9 @@ class DesignController extends Controller
         $designs = Design::with([
             'order',
             'assignedTo',
-            'designItems',
+            'designItems' => function ($q) {
+                $q->orderBy('created_at', 'desc');
+            },
             'order.statusHistory'
         ])
         ->whereHas('order.statusHistory', function ($q) {
@@ -30,42 +32,15 @@ class DesignController extends Controller
         ->paginate($limit);
 
         $designs->getCollection()->transform(function ($design) {
-            $approvalStatus = true; // Default approval status
-            $imageCover = $design->order->order_file; // Default cover image
-
-            // Process design items if any exist
-            if ($design->designItems->isNotEmpty()) {
-                $approvedItem = $design->designItems
-                    ->where('design_status', 'approved')
-                    ->sortByDesc('created_at')
-                    ->first();
-
-                if ($approvedItem) {
-                    $imageCover = $approvedItem->design_file; // Use approved design as cover image
-                    $approvalStatus = true;
-                } else {
-                    // Get the latest design item (any status)
-                    $latestItem = $design->designItems
-                        ->sortByDesc('created_at')
-                        ->first();
-
-                    $imageCover = $latestItem?->design_file;
-                    
-                    // Check if any design item is still in progress
-                    if ($design->designItems->contains('design_status', 'in_progress')) {
-                        $approvalStatus = false;
-                    } else {
-                        $approvalStatus = true;
-                    }                    
-                }
-            }
-
+            $approvedItem = $design->designItems->firstWhere('design_status', 'approved');
+            $latestItem = $design->designItems->first();
+            
             return [
                 'id' => $design->id,
                 'order_id' => $design->order->id,
                 'assigned_to' => $design->assigned_to,
-                'approval_status' => $approvalStatus,
-                'image_cover' => $imageCover,
+                'approval_status' => $approvedItem ? true : !$design->designItems->contains('design_status', 'in_progress'),
+                'image_cover' => $approvedItem?->design_file ?? $latestItem?->design_file ?? $design->order->order_file,
                 'order' => $design->order,
             ];
         });
@@ -110,7 +85,7 @@ class DesignController extends Controller
             'design_status' => 'required|in:approved,revision'
         ]);
 
-        $item = DesignItem::findOrFail($itemId);
+        $item = DesignItem::with('design.designItems')->findOrFail($itemId);
 
         if(!$item) {
             return response()->json([
@@ -121,10 +96,10 @@ class DesignController extends Controller
 
         // Prevent multiple approved items for the same design
         if ($request->design_status === 'approved') {
-            $alreadyApproved = DesignItem::where('design_id', $item->design_id)
+            $alreadyApproved = $item->design->designItems
                 ->where('design_status', 'approved')
                 ->where('id', '!=', $item->id)
-                ->exists();
+                ->isNotEmpty();
 
             if ($alreadyApproved) {
                 return response()->json([
@@ -148,14 +123,14 @@ class DesignController extends Controller
     /* CONFIRM DESIGN */
     public function confirmDesign($designId)
     {
-        $design = Design::with('order')->findOrFail($designId);
-
-        $approvedItem = DesignItem::where('design_id', $design->id)
-            ->where('design_status', 'approved')
-            ->exists();
+        $design = Design::with('order')
+            ->withCount('designItems as approved_count', function ($q) {
+                $q->where('design_status', 'approved');
+            })
+            ->findOrFail($designId);
 
         // Prevent confirmation if no approved design exists
-        if (!$approvedItem) {
+        if ($design->approved_count === 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot confirm design - no approved design item found'
