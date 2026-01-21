@@ -123,20 +123,20 @@ class DesignController extends Controller
     /* CONFIRM DESIGN */
     public function confirmDesign($designId)
     {
-        $design = Design::with('order')
-            ->withCount('designItems as approved_count', function ($q) {
-                $q->where('design_status', 'approved');
-            })
-            ->findOrFail($designId);
+        $design = Design::with('order')->findOrFail($designId);
+
+        $approvedItem = DesignItem::where('design_id', $design->id)
+            ->where('design_status', 'approved')
+            ->exists();
 
         // Prevent confirmation if no approved design exists
-        if ($design->approved_count === 0) {
+        if (!$approvedItem) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot confirm design - no approved design item found'
             ], 400);
         }
-
+       
         $alreadyConfirmed = StatusHistory::where('order_id', $design->order_id)
             ->where('status_stage', 'confirmed')
             ->exists();

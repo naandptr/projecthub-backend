@@ -113,9 +113,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/details/{detailId}', [ProductionPicProductionController::class, 'deleteDetail']);
 
         // PRODUCTION RESULTS
-        Route::post('/details/{detailId}/result', [ProductionPicProductionController::class, 'storeResult']);
-        Route::put('/results/{resultId}', [ProductionPicProductionController::class, 'updateResult']);
-        Route::delete('/results/{resultId}', [ProductionPicProductionController::class, 'deleteResult']);
         Route::get('/results/{productionId}', [ProductionPicProductionController::class, 'getResult']);
+        Route::post('/details/{productionId}/result', [ProductionPicProductionController::class, 'storeResult']);
+        Route::put('/results/{resultId}', [ProductionPicProductionController::class, 'updateResult']);
+        Route::delete('/results/{productionId}', [ProductionPicProductionController::class, 'deleteResult']);
    });
 });
