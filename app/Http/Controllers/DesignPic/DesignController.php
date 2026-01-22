@@ -48,7 +48,7 @@ class DesignController extends Controller
                         'product_quantity' => $design->order->product_quantity,
                         'product_price' => number_format($design->order->product_price, 0, ',', '.'),
                         'deadline' => $design->order->order_deadline,
-                        'order_file_url' => asset('storage/' . $design->order->order_file),
+                        'order_file' => asset('storage/' . $design->order->order_file),
                         'order_file_name' => basename($design->order->order_file),
                         'current_status' => $latestStatus?->status_stage ?? 'pending',
                         'design_stats' => [
@@ -106,7 +106,7 @@ class DesignController extends Controller
                         'product_quantity' => $order->product_quantity,
                         'order_date' => $order->order_date,
                         'order_deadline' => $order->order_deadline,
-                        'order_file_url' => asset('storage/' . $order->order_file),
+                        'order_file' => asset('storage/' . $order->order_file),
                         'order_file_name' => basename($order->order_file),
                         'order_notes' => $order->order_notes,
                         'created_by' => $order->createdBy?->full_name,
@@ -149,7 +149,7 @@ class DesignController extends Controller
     }
 
     /* START DESIGN */
-    public function start($orderId)
+    public function startDesign($orderId)
     {
         DB::beginTransaction();
         try {
@@ -243,7 +243,7 @@ class DesignController extends Controller
     }
 
     /* ADD DESIGN ITEM */
-    public function storeItem(Request $request, $itemId)
+    public function storeItem(Request $request, $designId)
     {       
         $request->validate([
             'design_file' => 'required|file|mimes:jpg,jpeg,png,pdf,ai,psd|max:10240',
@@ -254,7 +254,7 @@ class DesignController extends Controller
 
         try {
             $userId = auth()->user()->id;
-            $designId = (int) $itemId;
+            $designId = (int) $designId;
             $design = Design::find($designId);
             
             // Validate design exists

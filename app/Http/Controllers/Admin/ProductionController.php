@@ -15,12 +15,35 @@ class ProductionController extends Controller
     {
         $limit = min(request('limit', 10), 30);
 
-        $productions = Production::with(['order', 'assignedTo', 'order.statusHistory'])
+        $productions = Production::with(['order', 'order.statusHistory'])
             ->whereHas('order.statusHistory', function ($q) {
                 $q->where('status_stage', 'in_production');
             })
             ->orderBy('created_at', 'desc')
             ->paginate($limit);
+
+        $productions->getCollection()->transform(function ($production) {
+            $approvedDesign = $production->order->design->designItems->firstWhere('design_status', 'approved');
+            $existedResult = $production->productionResult;
+            
+            return [
+                'id' => $production->id,
+                'order_id' => $production->order->id,
+                'result_status' => $existedResult ? true : false,
+                'image_cover' => $existedResult?->production_file ?? $approvedDesign?->design_file ?? $production->order->order_file,
+                'order' => [
+                    'id' => $production->order->id,
+                    'order_number' => $production->order->order_number,
+                    'cust_name' => $production->order->cust_name,
+                    'order_date' => $production->order->order_date,
+                    'order_deadline' => $production->order->order_deadline,
+                    'product_name' => $production->order->product_name,
+                    'product_quantity' => $production->order->product_quantity,
+                    'product_price' => $production->order->product_price,
+                    'status_history' => $production->order->statusHistory,
+                ]
+            ];
+        });
         
         return response()->json([
             'success' => true,
@@ -38,7 +61,13 @@ class ProductionController extends Controller
     /* GET PRODUCTION BY ID */
     public function show($productionId)
     {
-        $production = Production::with(['order', 'assignedTo', 'productionDetails', 'productionDetails.inHouseDetail', 'productionDetails.vendorDetail', 'productionResult', 'order.statusHistory'])
+        $production = Production::with(['order', 
+            'assignedTo', 
+            'productionDetails', 
+            'productionDetails.inHouseDetail', 
+            'productionDetails.vendorDetail', 
+            'productionResult', 
+            'order.statusHistory'])
             ->find($productionId);
 
         if (!$production) {
