@@ -279,19 +279,22 @@ class ProductionController extends Controller
 
                 // Jika belum ada status in_production, buat
                 if (!$hasInProduction) {
-                    // Close previous status
-                    StatusHistory::where('order_id', $order->id)
-                        ->whereNull('end_time')
-                        ->update(['end_time' => now()]);
+                    DB::transaction(function () use ($order, $userId) {
+                        // Close previous status
+                        StatusHistory::where('order_id', $order->id)
+                            ->where('status_stage', 'confirmed') 
+                            ->whereNull('end_time')
+                            ->update(['end_time' => now()]);
 
-                    // Create in_production status
-                    StatusHistory::create([
-                        'order_id' => $order->id,
-                        'status_stage' => 'in_production',
-                        'updated_by' => $userId,
-                        'start_time' => now(),
-                        'end_time' => null
-                    ]);
+                        // Create in_production status
+                        StatusHistory::create([
+                            'order_id' => $order->id,
+                            'status_stage' => 'in_production',
+                            'updated_by' => $userId,
+                            'start_time' => now(),
+                            'end_time' => null
+                        ]);
+                    });
                 }
 
                 $latestStatus = $order->statusHistory()->latest('start_time')->first();

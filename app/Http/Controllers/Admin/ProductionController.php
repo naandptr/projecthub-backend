@@ -3,10 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Order;
 use App\Models\Production;
-use App\Models\ProductionResult;
 use App\Models\StatusHistory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +85,7 @@ class ProductionController extends Controller
         DB::transaction(function () use ($production) {
             // Close current status stage by setting end_time
             StatusHistory::where('order_id', $production->order_id)
+                ->where('status_stage', 'in_production')  // Constraint
                 ->whereNull('end_time')
                 ->update([
                     'end_time' => now()
