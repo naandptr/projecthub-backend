@@ -175,20 +175,23 @@ class DesignController extends Controller
 
                 // Create 'designing' status if it doesn't exist yet
                 if (!$hasDesigning) {
-                    StatusHistory::where('order_id', $orderId)
-                        ->whereNull('end_time')
-                        ->update([
-                            'end_time' => now()
-                    ]);
+                    DB::transaction(function () use ($orderId) {
+                        StatusHistory::where('order_id', $orderId)
+                            ->where('status_stage', 'pending') 
+                            ->whereNull('end_time')
+                            ->update([
+                                'end_time' => now()
+                        ]);
 
-                    // Create new 'designing' status
-                    StatusHistory::create([
-                        'order_id' => $orderId,
-                        'status_stage' => 'designing',
-                        'updated_by' => Auth::id(),
-                        'start_time' => now(),
-                        'end_time' => null
-                    ]);
+                        // Create new 'designing' status
+                        StatusHistory::create([
+                            'order_id' => $orderId,
+                            'status_stage' => 'designing',
+                            'updated_by' => Auth::id(),
+                            'start_time' => now(),
+                            'end_time' => null
+                        ]);
+                    });
                 }
 
                 $latestStatus = $order->statusHistory()->latest('start_time')->first();

@@ -152,6 +152,7 @@ class DesignController extends Controller
         DB::transaction(function () use ($design) {
             // Close the current status stage by setting end_time
             StatusHistory::where('order_id', $design->order_id)
+                ->where('status_stage', 'designing')  // Constraint
                 ->whereNull('end_time')
                 ->update([
                     'end_time' => now()

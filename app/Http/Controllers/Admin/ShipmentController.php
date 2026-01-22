@@ -8,6 +8,7 @@ use App\Models\StatusHistory;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ShipmentController extends Controller
 {
@@ -62,21 +63,24 @@ class ShipmentController extends Controller
                 'shipment_notes' => $request->shipment_notes,
             ]);
 
-            // Close current status stage by setting end_time
-            StatusHistory::where('order_id', $order->id)
-                ->whereNull('end_time')
-                ->update([
+            DB::transaction(function () use ($order) {
+                // Close current status stage by setting end_time
+                StatusHistory::where('order_id', $order->id)
+                    ->where('status_stage', 'ready')  // Constraint
+                    ->whereNull('end_time')
+                    ->update([
+                        'end_time' => now()
+                    ]);
+
+                // Create 'completed' status history (order is now shipped/completed)
+                StatusHistory::create([
+                    'order_id' => $order->id,
+                    'status_stage' => 'completed',
+                    'updated_by' => Auth::id(),
+                    'start_time' => now(),
                     'end_time' => now()
                 ]);
-
-            // Create 'completed' status history (order is now shipped/completed)
-            StatusHistory::create([
-                'order_id' => $order->id,
-                'status_stage' => 'completed',
-                'updated_by' => Auth::id(),
-                'start_time' => now(),
-                'end_time' => now()
-            ]);
+            });
 
             return response()->json([
                 'success' => true,
