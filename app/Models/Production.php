@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class Production extends Model
 {
@@ -17,6 +21,24 @@ class Production extends Model
         'order_id',
         'assigned_to',
     ];
+
+    public static function compressAndStoreImage(UploadedFile $file): string
+    {
+        $manager = new ImageManager(new Driver());
+
+        $image = $manager->read($file->getPathname());
+
+        $image->scaleDown(width: 1280);
+
+        $filename = 'production_results/' . uniqid() . '.jpg';
+
+        Storage::disk('public')->put(
+            $filename,
+            (string) $image->toJpeg(60)
+        );
+
+        return $filename;
+    }
 
     public function productionDetails(): HasMany
     {

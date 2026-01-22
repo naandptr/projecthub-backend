@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
 
 class DesignController extends Controller
 {
-    /* GET ALL DESIGNS */
+    /* GET ALL DESIGN TASKS */
     public function index()
     {
         try {
@@ -71,7 +71,7 @@ class DesignController extends Controller
         }
     }
 
-    /* GET DESIGN BY ID */
+    /* GET DESIGN TASK BY ID */
     public function show($orderId)
     {
         try {
@@ -132,7 +132,7 @@ class DesignController extends Controller
                     'timeline' => $order->statusHistory->map(function ($history) {
                         return [
                             'id' => $history->id,
-                            'stage' => $history->status_stage,
+                            'status_stage' => $history->status_stage,
                             'updated_by' => $history->updatedBy?->full_name,
                             'start_time' => $history->start_time->format('d M Y H:i:s'),
                             'end_time' => $history->end_time?->format('d M Y H:i:s') ?? null,
@@ -203,7 +203,7 @@ class DesignController extends Controller
                     'data' => [
                         'order_id' => $orderId,
                         'design_id' => $order->design->id,
-                        'status' => $latestStatus?->status_stage ?? 'designing',
+                        'status_stage' => $latestStatus?->status_stage ?? 'designing',
                         'assigned_to' => $userId,
                     ],
                 ]);
@@ -229,7 +229,7 @@ class DesignController extends Controller
                 'data' => [
                     'order_id' => $orderId,
                     'design_id' => $order->design->id,
-                    'status' => 'designing',
+                    'status_stage' => 'designing',
                     'assigned_to' => $userId,
                 ],
             ]);

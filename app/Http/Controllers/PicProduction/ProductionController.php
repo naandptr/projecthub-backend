@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\PicProduction;
 
-use App\Models\Order;
 use App\Models\Production;
 use App\Models\ProductionDetail;
 use App\Models\ProductionResult;
@@ -13,20 +12,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 
 class ProductionController extends Controller
 {
-    /**
-     * GET PRODUCTION BY ID
-     */
+    /* GET ALL PRODUCTION TASKS */
     public function index()
     {
-        try {
-
+        try {            
             $productions = Production::whereHas('order.statusHistory', function ($query) {
-                    $query->whereIn('status_stage', ['confirmed', 'in_production', 'ready', 'completed'])
-                        ->whereRaw('id = (SELECT MAX(id) FROM status_history WHERE order_id = orders.id)');
+                $query->whereIn('status_stage', ['confirmed', 'in_production', 'ready', 'completed'])
+                    ->whereRaw('id = (SELECT MAX(id) FROM status_history WHERE order_id = orders.id)');
                 })
                 ->with([
                     'order' => function ($q) {
@@ -64,7 +61,7 @@ class ProductionController extends Controller
                     'order_file' => asset('storage/' . $production->order->order_file), 
                     'order_notes' => $production->order->order_notes,
                     'status' => [
-                        'stage' => $latestStatus?->status_stage ?? 'pending',
+                        'status_stage' => $latestStatus?->status_stage ?? 'pending',
                         'started_at' => $latestStatus?->start_time,
                         'updated_by' => $latestStatus?->updatedBy?->username ?? '-',
                     ],
@@ -89,66 +86,24 @@ class ProductionController extends Controller
         }
     }
 
-    /**
-     * GET PRODUCTION DETAILS BY ID
-     */
-    public function getDetail($id)
-    {
-        try {
-            $detail = ProductionDetail::where('production_id', $id)
-                ->with(['vendorDetail', 'inhouseDetail'])
-                ->firstOrFail();
-
-            $responseData = [
-                'id' => $detail->id,
-                'production_id' => $detail->production_id,
-                'production_type' => $detail->production_type,
-            ];
-
-            if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
-                $responseData['vendor_detail'] = [
-                    'id' => $detail->vendorDetail->id,
-                    'vendor_name' => $detail->vendorDetail->vendor_name,
-                    'start_date' => $detail->vendorDetail->start_date->format('Y-m-d'),
-                    'deadline' => $detail->vendorDetail->deadline->format('Y-m-d'),
-                ];
-            } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
-                $responseData['inhouse_detail'] = [
-                    'id' => $detail->inhouseDetail->id,
-                    'start_date' => $detail->inhouseDetail->start_date->format('Y-m-d'),
-                    'end_date' => $detail->inhouseDetail->end_date->format('Y-m-d'),
-                    'production_budget' => $detail->inhouseDetail->production_budget,
-                ];
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Production detail retrieved successfully',
-                'data' => $responseData,
-            ], 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Production detail not found',
-            ], 404);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error retrieving production detail',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-  
-    /**
-     * GET PRODUCTION TASK BY ID
-     */
+    /* GET PRODUCTION TASK BY ID */
     public function show($id)
     {
         try {
             $production = Production::with([
                 'order' => function ($q) {
-                    $q->select('id', 'order_number', 'cust_name', 'cust_phone', 'cust_address', 'order_date', 'order_deadline', 'product_name', 'product_quantity', 'product_price', 'order_file', 'order_notes');
+                    $q->select('id', 
+                    'order_number', 
+                    'cust_name', 
+                    'cust_phone', 
+                    'cust_address', 
+                    'order_date', 
+                    'order_deadline', 
+                    'product_name', 
+                    'product_quantity', 
+                    'product_price', 
+                    'order_file', 
+                    'order_notes');
                 },
                 'order.statusHistory' => function ($query) {
                     $query->with('updatedBy:id,username')
@@ -188,7 +143,7 @@ class ProductionController extends Controller
                 'status_timeline' => $production->order->statusHistory->map(function ($status) {
                     return [
                         'id' => $status->id,
-                        'stage' => $status->status_stage,
+                        'status_stage' => $status->status_stage,
                         'start_time' => $status->start_time,
                         'end_time' => $status->end_time,
                         'duration_minutes' => $status->end_time && $status->start_time 
@@ -254,9 +209,56 @@ class ProductionController extends Controller
         }
     }
 
-   /**
-    * START PRODUCTION 
-    */
+    /* GET PRODUCTION DETAILS BY ID */
+    public function getDetail($id)
+    {
+        try {
+            $detail = ProductionDetail::where('production_id', $id)
+                ->with(['vendorDetail', 'inhouseDetail'])
+                ->firstOrFail();
+
+            $responseData = [
+                'id' => $detail->id,
+                'production_id' => $detail->production_id,
+                'production_type' => $detail->production_type,
+            ];
+
+            if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
+                $responseData['vendor_detail'] = [
+                    'id' => $detail->vendorDetail->id,
+                    'vendor_name' => $detail->vendorDetail->vendor_name,
+                    'start_date' => $detail->vendorDetail->start_date->format('Y-m-d'),
+                    'deadline' => $detail->vendorDetail->deadline->format('Y-m-d'),
+                ];
+            } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
+                $responseData['inhouse_detail'] = [
+                    'id' => $detail->inhouseDetail->id,
+                    'start_date' => $detail->inhouseDetail->start_date->format('Y-m-d'),
+                    'end_date' => $detail->inhouseDetail->end_date->format('Y-m-d'),
+                    'production_budget' => $detail->inhouseDetail->production_budget,
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Production detail retrieved successfully',
+                'data' => $responseData,
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Production detail not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving production detail',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /* START PRODUCTION */
     public function startProduction(Request $request, $id)
     {
         DB::beginTransaction();
@@ -264,20 +266,20 @@ class ProductionController extends Controller
             $userId = auth()->user()->id;
 
             $production = Production::with('order')->findOrFail($id);
-            $order = $production->order;
-
-            // Check if already assigned to another user
+            $order = $production->order;            
+            
+            // Prevent starting production if already assigned to another user
             if ($production->assigned_to !== null && $production->assigned_to !== $userId) {
                 throw new \Exception('This production task is already assigned to another user');
-            }
-
-            // Jika sudah di-assign ke pic, cek apakah sudah ada status in_production
+            }            
+            
+            // Handle case where user is resuming their own production work
             if ($production->assigned_to === $userId) {
                 $hasInProduction = $order->statusHistory()
                     ->where('status_stage', 'in_production')
-                    ->exists();
-
-                // Jika belum ada status in_production, buat
+                    ->exists();                
+                    
+                // Create 'in_production' status if it doesn't exist yet
                 if (!$hasInProduction) {
                     // Close previous status
                     StatusHistory::where('order_id', $order->id)
@@ -285,7 +287,7 @@ class ProductionController extends Controller
                         ->whereNull('end_time')
                         ->update(['end_time' => now()]);
 
-                    // Create in_production status
+                    // Create 'in_production' status
                     StatusHistory::create([
                         'order_id' => $order->id,
                         'status_stage' => 'in_production',
@@ -305,22 +307,22 @@ class ProductionController extends Controller
                     'data' => [
                         'production_id' => $production->id,
                         'order_id' => $order->id,
-                        'status' => $latestStatus?->status_stage ?? 'in_production',
+                        'status_stage' => $latestStatus?->status_stage ?? 'in_production',
                         'assigned_to' => $userId,
                     ],
                 ]);
-            }
-
-            // Jika belum di-assign, assign sekarang + ubah status
+            }            
+            
+            // Assign the production task to current user (first-time assignment)
             $production->update(['assigned_to' => $userId]);
 
             // Close previous status
-            $previousStatus = $order->statusHistory()->latest('created_at')->first();
-            if ($previousStatus) {
-                $previousStatus->update(['end_time' => now()]);
-            }
+            StatusHistory::where('order_id', $order->id)
+                ->where('status_stage', 'confirmed') 
+                ->whereNull('end_time')
+                ->update(['end_time' => now()]);
 
-            // Create in_production status
+            // Create 'in_production' status history entry
             StatusHistory::create([
                 'order_id' => $order->id,
                 'status_stage' => 'in_production',
@@ -336,7 +338,7 @@ class ProductionController extends Controller
                 'data' => [
                     'production_id' => $production->id,
                     'order_id' => $order->id,
-                    'status' => 'in_production',
+                    'status_stage' => 'in_production',
                     'assigned_to' => $userId,
                 ],
             ]);
@@ -356,16 +358,13 @@ class ProductionController extends Controller
         }
     }
 
-   /**
-    * STORE PRODUCTION DETAIL
-    */
+    /* CREATE PRODUCTION DETAILS */
     public function storeDetail(Request $request, $id)
     {
         DB::beginTransaction();
         try {
-            $userId = auth()->user()->id;
-
-            // Validasi dasar
+            $userId = auth()->user()->id;            
+            
             $baseValidator = Validator::make(array_merge(['id' => $id], $request->all()), [
                 'id' => 'required|exists:productions,id',
                 'production_type' => 'required|in:in_house,vendor',
@@ -377,25 +376,24 @@ class ProductionController extends Controller
                     'message' => 'Validation failed',
                     'errors' => $baseValidator->errors(),
                 ], 422);
-            }
-
-            // Get production dengan order
+            }            
+            
             $production = Production::with('order')->findOrFail($id);
-            $order = $production->order;
-
-            // VALIDASI: Harus sudah start production (assigned_to tidak null)
+            $order = $production->order;            
+            
+            // Ensure production has been started (assigned to someone)
             if ($production->assigned_to === null) {
                 throw new \Exception('You must start production first before creating production detail');
-            }
-
-            // VALIDASI: Harus user yang di-assign
+            }            
+            
+            // Ensure only assigned production team can create production details
             if ($production->assigned_to !== $userId) {
                 throw new \Exception('Forbidden - You do not have permission to create detail for this production');
-            }
-
-            // AUTO UBAH STATUS: Jika masih confirmed, ubah ke in_production
+            }            
+            
             $latestStatus = $order->statusHistory()->latest('created_at')->first();
             
+            // Transition from 'confirmed' to 'in_production' if needed
             if ($latestStatus && $latestStatus->status_stage === 'confirmed') {
                 // Close confirmed status
                 $latestStatus->update(['end_time' => now()]);
@@ -409,9 +407,9 @@ class ProductionController extends Controller
                 ]);
             }
 
-            $productionType = $request->production_type;
-
-            // Validasi spesifik berdasarkan type
+            $productionType = $request->production_type;            
+            
+            // Validate vendor-specific fields if production type is vendor
             if ($productionType === 'vendor') {
                 $detailValidator = Validator::make($request->all(), [
                     'vendor_name' => 'required|string|max:255',
@@ -427,6 +425,7 @@ class ProductionController extends Controller
                     ], 422);
                 }
             } elseif ($productionType === 'in_house') {
+                // Validate in-house specific fields if production type is in_house
                 $detailValidator = Validator::make($request->all(), [
                     'start_date' => 'required|date',
                     'end_date' => 'required|date',
@@ -440,15 +439,14 @@ class ProductionController extends Controller
                         'errors' => $detailValidator->errors(),
                     ], 422);
                 }
-            }
-
-            // Create production detail
+            }            
+            
             $detail = ProductionDetail::create([
                 'production_id' => $id,
                 'production_type' => $productionType,
-            ]);
-
-            // Create vendor or inhouse detail
+            ]);            
+            
+            // Create vendor-specific detail if production type is vendor
             if ($productionType === 'vendor') {
                 $vendorDetail = VendorDetail::create([
                     'production_detail_id' => $detail->id,
@@ -476,7 +474,8 @@ class ProductionController extends Controller
                     ],
                 ], 201);
 
-            } else { // in_house
+            } else { 
+                // Create in-house specific detail if production type is in_house
                 $inhouseDetail = InhouseDetail::create([
                     'production_detail_id' => $detail->id,
                     'start_date' => $request->start_date,
@@ -513,16 +512,14 @@ class ProductionController extends Controller
         }
     }
    
-   /**
-     * UPDATE PRODUCTION DETAIL
-     */
+    /* UPDATE PRODUCTION DETAILS */
     public function updateDetail(Request $request, $detailId)
     {
         DB::beginTransaction();
         try {
-            $detail = ProductionDetail::with(['vendorDetail', 'inhouseDetail'])->findOrFail($detailId);
-
-            // Validasi spesifik berdasarkan type
+            $detail = ProductionDetail::with(['vendorDetail', 'inhouseDetail'])->findOrFail($detailId);     
+            
+            // Validate and update vendor-specific fields if production type is vendor
             if ($detail->production_type === 'vendor') {
                 $validator = Validator::make($request->all(), [
                     'vendor_name' => 'required|string|max:255',
@@ -538,6 +535,7 @@ class ProductionController extends Controller
                     ], 422);
                 }
 
+                // Update vendor detail if it exists
                 if ($detail->vendorDetail) {
                     $detail->vendorDetail->update([
                         'vendor_name' => $request->vendor_name,
@@ -547,6 +545,7 @@ class ProductionController extends Controller
                 }
 
             } elseif ($detail->production_type === 'in_house') {
+                // Validate and update in-house specific fields if production type is in_house
                 $validator = Validator::make($request->all(), [
                     'start_date' => 'required|date',
                     'end_date' => 'required|date',
@@ -561,6 +560,7 @@ class ProductionController extends Controller
                     ], 422);
                 }
 
+                // Update in-house detail if it exists
                 if ($detail->inhouseDetail) {
                     $detail->inhouseDetail->update([
                         'start_date' => $request->start_date,
@@ -580,6 +580,7 @@ class ProductionController extends Controller
                 'production_type' => $detail->production_type,
             ];
 
+            // Add vendor-specific data to response if production type is vendor
             if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
                 $responseData['vendor_detail'] = [
                     'id' => $detail->vendorDetail->id,
@@ -588,6 +589,7 @@ class ProductionController extends Controller
                     'deadline' => $detail->vendorDetail->deadline,
                 ];
             } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
+                // Add in-house specific data to response if production type is in_house
                 $responseData['inhouse_detail'] = [
                     'id' => $detail->inhouseDetail->id,
                     'start_date' => $detail->inhouseDetail->start_date,
@@ -618,9 +620,7 @@ class ProductionController extends Controller
         }
     }
 
-    /**
-     * DELETE PRODUCTION DETAIL
-     */
+    /* DELETE PRODUCTION DETAILS */
     public function deleteDetail($detailId)
     {
         DB::beginTransaction();
@@ -660,9 +660,7 @@ class ProductionController extends Controller
         }
     }
 
-    /**
-     * GET PRODUCTION RESULT BY ID
-     */
+    /* GET PRODUCTION RESULT BY ID */
     public function getResult($productionId)
     {
         try {
@@ -695,9 +693,7 @@ class ProductionController extends Controller
         }
     }
     
-    /**
-     * STORE PRODUCTION RESULT
-     */
+    /* CREATE PRODUCTION RESULT */
     public function storeResult(Request $request, $productionId)
     {
         $validator = Validator::make($request->all(), [
@@ -715,10 +711,24 @@ class ProductionController extends Controller
         try {
             $production = Production::findOrFail($productionId);
 
+            // Handle file upload with compression for images
             $file = $request->file('production_file');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('production_results', $filename, 'public');
+            $path = null;  // Initialize path variable
+            
+            // Compress and store image files to save storage space
+            if (str_starts_with($file->getMimeType(), 'image/')) {
+                $path = Production::compressAndStoreImage($file);
+            } else {
+                // Store non-image files (PDF) as is
+                $path = $file->store('production_results', 'public');
+            }
 
+            // Validate file was stored successfully
+            if (!$path) {
+                throw new \Exception('Failed to upload file to storage');
+            }
+
+            // Create production result record
             $result = ProductionResult::create([
                 'production_id' => $productionId,
                 'production_file' => $path,
@@ -731,7 +741,7 @@ class ProductionController extends Controller
                     'id' => $result->id,
                     'production_id' => $result->production_id,
                     'production_file' => $result->production_file,
-                    'file_url' => asset('storage/' . $result->production_file), // ✅ FULL URL
+                    'file_url' => asset('storage/' . $result->production_file), 
                     'file_name' => basename($result->production_file),
                     'created_at' => $result->created_at,
                 ],
@@ -751,12 +761,9 @@ class ProductionController extends Controller
         }
     }
 
-    /**
-     * UPDATE PRODUCTION RESULT
-     */
+    /* UPDATE PRODUCTION RESULT */
     public function updateResult(Request $request, $resultId)
-    {
-        // âœ… DEBUG: Log request info
+    {        
         \Log::info('updateResult DEBUG', [
             'resultId' => $resultId,
             'hasFile_production_file' => $request->hasFile('production_file'),
@@ -787,22 +794,38 @@ class ProductionController extends Controller
         try {
             $result = ProductionResult::findOrFail($resultId);
 
-            \Log::info('updateResult: Found result', ['id' => $result->id, 'current_file' => $result->production_file]);
+            \Log::info('updateResult: Found result', ['id' => $result->id, 'current_file' => $result->production_file]);            
 
-            // Delete old file
+            // Delete old file from storage if it exists
             if ($result->production_file && Storage::disk('public')->exists($result->production_file)) {
                 Storage::disk('public')->delete($result->production_file);
                 \Log::info('updateResult: Old file deleted');
+            }  
+            
+            /* $file = $request->file('production_file');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('production_results', $filename, 'public'); */
+
+            // Handle file upload with compression for images
+            $file = $request->file('production_file');
+            $path = null;  // Initialize path variable
+
+            // Compress and store image files to save storage space
+            if (str_starts_with($file->getMimeType(), 'image/')) {
+                $path = Production::compressAndStoreImage($file);
+            } else {
+                // Store non-image files (PDF) as is
+                $path = $file->store('production_results', 'public');
             }
 
-            // Upload new file
-            $file = $request->file('production_file');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('production_results', $filename, 'public');
-
-            \Log::info('updateResult: New file uploaded', ['path' => $path]);
-
-            // Update database
+            \Log::info('updateResult: New file uploaded', ['path' => $path]);            
+            
+            // Validate file was stored successfully
+            if (!$path) {
+                throw new \Exception('Failed to upload file to storage');
+            }
+            
+            // Update production result with new file path
             $result->update(['production_file' => $path]);
 
             \Log::info('updateResult: Database updated');
@@ -846,13 +869,14 @@ class ProductionController extends Controller
         }
     }
 
+    /* DELETE PRODUCTION RESULT */
     public function deleteResult($productionId)
     {
         DB::beginTransaction();
         try {
-            $result = Production::with('productionResult')->findOrFail($productionId);
-
-            // Delete file
+            $result = Production::with('productionResult')->findOrFail($productionId);            
+            
+            // Delete associated file from storage if it exists
             if ($result->productionResult->production_file && Storage::disk('public')->exists($result->productionResult->production_file)) {
                 Storage::disk('public')->delete($result->productionResult->production_file);
             }
