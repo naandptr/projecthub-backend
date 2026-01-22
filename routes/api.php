@@ -91,10 +91,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // TASKS
         Route::get('/tasks', [DesignPicDesignController::class, 'index']);
         Route::get('/tasks/{orderId}', [DesignPicDesignController::class, 'show']);
-        Route::post('/tasks/{orderId}/start', [DesignPicDesignController::class, 'start']);
+        Route::post('/tasks/{orderId}/start', [DesignPicDesignController::class, 'startDesign']);
 
         // DESIGN ITEMS
-        Route::post('/design-items/{itemId}', [DesignPicDesignController::class, 'storeItem']);
+        Route::post('/design-items/{designId}', [DesignPicDesignController::class, 'storeItem']);
         Route::put('/design-items/{itemId}', [DesignPicDesignController::class, 'updateItem']);
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });

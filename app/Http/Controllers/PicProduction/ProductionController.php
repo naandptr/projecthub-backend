@@ -60,8 +60,8 @@ class ProductionController extends Controller
                         'order_total' => $totalPrice,
                         'deadline' => $production->order->order_deadline,
                     ],
-                    'order_file' => $production->order->order_file,
-                    'order_file_url' => asset('storage/' . $production->order->order_file), 
+                    'order_file_name' => basename($production->order->order_file),
+                    'order_file' => asset('storage/' . $production->order->order_file), 
                     'order_notes' => $production->order->order_notes,
                     'status' => [
                         'stage' => $latestStatus?->status_stage ?? 'pending',
@@ -279,22 +279,20 @@ class ProductionController extends Controller
 
                 // Jika belum ada status in_production, buat
                 if (!$hasInProduction) {
-                    DB::transaction(function () use ($order, $userId) {
-                        // Close previous status
-                        StatusHistory::where('order_id', $order->id)
-                            ->where('status_stage', 'confirmed') 
-                            ->whereNull('end_time')
-                            ->update(['end_time' => now()]);
+                    // Close previous status
+                    StatusHistory::where('order_id', $order->id)
+                        ->where('status_stage', 'confirmed') 
+                        ->whereNull('end_time')
+                        ->update(['end_time' => now()]);
 
-                        // Create in_production status
-                        StatusHistory::create([
-                            'order_id' => $order->id,
-                            'status_stage' => 'in_production',
-                            'updated_by' => $userId,
-                            'start_time' => now(),
-                            'end_time' => null
-                        ]);
-                    });
+                    // Create in_production status
+                    StatusHistory::create([
+                        'order_id' => $order->id,
+                        'status_stage' => 'in_production',
+                        'updated_by' => $userId,
+                        'start_time' => now(),
+                        'end_time' => null
+                    ]);
                 }
 
                 $latestStatus = $order->statusHistory()->latest('start_time')->first();
