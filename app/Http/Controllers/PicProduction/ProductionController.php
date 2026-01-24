@@ -801,10 +801,6 @@ class ProductionController extends Controller
                 Storage::disk('public')->delete($result->production_file);
                 \Log::info('updateResult: Old file deleted');
             }  
-            
-            /* $file = $request->file('production_file');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('production_results', $filename, 'public'); */
 
             // Handle file upload with compression for images
             $file = $request->file('production_file');

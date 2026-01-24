@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TrackOrderController;
 use App\Http\Controllers\Superadmin\RoleController;
 use App\Http\Controllers\Superadmin\UserController as SuperadminUserController;
+use App\Http\Controllers\Superadmin\VendorController as SuperadminVendorController;
 use App\Http\Controllers\Superadmin\ProgressTrackController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\OrderController;
@@ -15,6 +16,8 @@ use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\ShipmentController;
 use App\Http\Controllers\DesignPic\DesignController as DesignPicDesignController;
 use App\Http\Controllers\PicProduction\ProductionController as ProductionPicProductionController;
+use App\Http\Controllers\PicProduction\VendorController as ProductionPicVendorController;
+
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -44,6 +47,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/users/{userId}/reset-password', [SuperadminUserController::class, 'resetPassword']);
         Route::delete('/users/{userId}', [SuperadminUserController::class, 'destroy']);
 
+        // VENDOR
+        Route::get('/vendors', [SuperadminVendorController::class, 'index']);
+        Route::get('/vendors/{vendorId}', [SuperadminVendorController::class, 'show']);
+        Route::post('/vendors', [SuperadminVendorController::class, 'store']);
+        Route::put('/vendors/{vendorId}', [SuperadminVendorController::class, 'update']);
+        Route::delete('/vendors/{vendorId}', [SuperadminVendorController::class, 'destroy']);
+        
         // PROGRESS TRACK
         Route::get('/progress', [ProgressTrackController::class, 'index']);
     });
@@ -107,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/start', [ProductionPicProductionController::class, 'startProduction']);
 
         // PRODUCTION DETAILS
+        Route::get('/vendors', [ProductionPicVendorController::class, 'index']);
         Route::get('/{id}/details', [ProductionPicProductionController::class, 'getDetail']);
         Route::post('/{id}/details', [ProductionPicProductionController::class, 'storeDetail']);
         Route::put('/details/{detailId}', [ProductionPicProductionController::class, 'updateDetail']);
