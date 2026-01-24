@@ -19,6 +19,7 @@ class DesignController extends Controller
     {
         try {
             $userId = auth()->user()->id;
+            $limit = min(request('limit', 10), 20);
 
             $designs = Design::where('assigned_to', $userId)
                 ->with([
@@ -30,39 +31,44 @@ class DesignController extends Controller
                         $query->latest('created_at');
                     }
                 ])
-                ->get();
+                ->orderBy('created_at', 'desc')
+                ->paginate($limit);
+
+            $designs->getCollection()->transform(function ($design) {
+                $latestStatus = $design->order->statusHistory->first();
+                $items = $design->designItems;
+
+                return [
+                    'id' => $design->id,
+                    'order_id' => $design->order->id,
+                    'order_number' => $design->order->order_number,
+                    'customer_name' => $design->order->cust_name,
+                    'product_name' => $design->order->product_name,
+                    'deadline' => $design->order->order_deadline,
+                    'order_file' => asset('storage/' . $design->order->order_file),
+                    'order_file_name' => basename($design->order->order_file),
+                    'current_status' => $latestStatus?->status_stage ?? 'pending',
+                    'design_stats' => [
+                        'in_progress' => $items->where('design_status', 'in_progress')->count(),
+                        'approved'    => $items->where('design_status', 'approved')->count(),
+                        'revision'    => $items->where('design_status', 'revision')->count(),
+                        'total'       => $items->count(),
+                    ]
+                ];
+            });
 
             return response()->json([
                 'success' => true,
                 'message' => 'My design tasks',
-                'data' => $designs->map(function ($design) {
-                    $latestStatus = $design->order->statusHistory->first();
-                    $items = $design->designItems;
-
-                    return [
-                        'id' => $design->id,
-                        'order_id' => $design->order->id,
-                        'order_number' => $design->order->order_number,
-                        'customer_name' => $design->order->cust_name,
-                        'product_name' => $design->order->product_name,
-                        'product_quantity' => $design->order->product_quantity,
-                        'product_price' => number_format($design->order->product_price, 0, ',', '.'),
-                        'deadline' => $design->order->order_deadline,
-                        'order_file' => asset('storage/' . $design->order->order_file),
-                        'order_file_name' => basename($design->order->order_file),
-                        'current_status' => $latestStatus?->status_stage ?? 'pending',
-                        'design_stats' => [
-                            'in_progress' => $items->where('design_status', 'in_progress')->count(),
-                            'approved' => $items->where('design_status', 'approved')->count(),
-                            'revision' => $items->where('design_status', 'revision')->count(),
-                            'total' => $items->count(),
-                        ],
-                        'progress_percentage' => $items->count() > 0 
-                            ? round((($items->where('design_status', 'approved')->count() / $items->count()) * 100), 0) 
-                            : 0,
-                    ];
-                }),
+                'data' => $designs->items(),
+                'meta' => [
+                    'current_page' => $designs->currentPage(),
+                    'last_page'    => $designs->lastPage(),
+                    'total'        => $designs->total(),
+                    'per_page'     => $designs->perPage(),
+                ]
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
