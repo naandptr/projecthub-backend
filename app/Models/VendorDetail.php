@@ -37,4 +37,9 @@ class VendorDetail extends Model
     {
         return $this->belongsTo(ProductionDetail::class, 'production_detail_id', 'id');
     }
+
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class, 'vendor_id', 'id');
+    }
 }
