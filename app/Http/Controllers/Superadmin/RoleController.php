@@ -11,23 +11,15 @@ class RoleController extends Controller
 {
     /* GET ALL ROLES */
     public function index()
-    {
-        $limit = min(request('limit', 10), 30);
-
+    {        
         $roles = Role::with('user')
             ->orderBy('created_at', 'desc')
-            ->paginate($limit);
+            ->get();
 
         return response()->json([
             'success' => true,
             'message' => 'List of roles',
-            'data' => $roles->items(),
-            'meta' => [
-                'current_page' => $roles->currentPage(),
-                'last_page'    => $roles->lastPage(),
-                'total'        => $roles->total(),
-                'per_page'     => $roles->perPage(),
-            ]
+            'data' => $roles
         ]);
     }
 

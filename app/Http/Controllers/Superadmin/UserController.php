@@ -14,23 +14,15 @@ class UserController extends Controller
 {
     /* GET ALL USERS */
     public function index()
-    {
-        $limit = min(request('limit', 10), 30);
-
+    {        
         $users = User::with('role')
             ->orderBy('created_at', 'desc')
-            ->paginate($limit);
+            ->get();
 
         return response()->json([
             'success' => true,
             'message' => 'List of users',
-            'data' => $users->items(),
-            'meta' => [
-                'current_page' => $users->currentPage(),
-                'last_page'    => $users->lastPage(),
-                'total'        => $users->total(),
-                'per_page'     => $users->perPage(),
-            ]
+            'data' => $users,
         ]);
     }
 

@@ -15,8 +15,6 @@ class DesignController extends Controller
     /* GET ALL DESIGNS */
     public function index()
     {
-        $limit = min(request('limit', 10), 30);
-
         $designs = Design::with([
             'order',
             'assignedTo',
@@ -29,9 +27,9 @@ class DesignController extends Controller
             $q->where('status_stage', 'designing');
         })
         ->orderBy('created_at', 'desc')
-        ->paginate($limit);
+        ->get();
 
-        $designs->getCollection()->transform(function ($design) {
+        $designs = $designs->map(function ($design) {
             $approvedItem = $design->designItems->firstWhere('design_status', 'approved');
             $latestItem = $design->designItems->first();
             
@@ -48,13 +46,7 @@ class DesignController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'List of designs',
-            'data' => $designs->items(), 
-            'meta' => [
-                'current_page' => $designs->currentPage(),
-                'last_page'    => $designs->lastPage(),
-                'total'        => $designs->total(),
-                'per_page'     => $designs->perPage(),
-            ]
+            'data' => $designs
         ]);
     }
 

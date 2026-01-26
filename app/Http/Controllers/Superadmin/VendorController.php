@@ -11,22 +11,14 @@ class VendorController extends Controller
 {
     /* GET ALL VENDORS */
     public function index()
-    {
-        $limit = min(request('limit', 10), 30);
-
+    {       
         $vendors = Vendor::orderBy('created_at', 'desc')
-            ->paginate($limit);
+            ->get();
 
         return response()->json([
             'success' => true,
             'message' => 'List of vendors',
-            'data' => $vendors->items(),
-            'meta' => [
-                'current_page' => $vendors->currentPage(),
-                'last_page'    => $vendors->lastPage(),
-                'total'        => $vendors->total(),
-                'per_page'     => $vendors->perPage(),
-            ]
+            'data' => $vendors
         ]);
     }
 

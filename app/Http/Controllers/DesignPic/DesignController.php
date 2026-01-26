@@ -19,7 +19,6 @@ class DesignController extends Controller
     {
         try {
             $userId = auth()->user()->id;
-            $limit = min(request('limit', 10), 20);
 
             $designs = Design::where('assigned_to', $userId)
                 ->with([
@@ -32,9 +31,9 @@ class DesignController extends Controller
                     }
                 ])
                 ->orderBy('created_at', 'desc')
-                ->paginate($limit);
+                ->get();
 
-            $designs->getCollection()->transform(function ($design) {
+            $designs = $designs->map(function ($design) {
                 $latestStatus = $design->order->statusHistory->first();
                 $items = $design->designItems;
 
@@ -60,13 +59,7 @@ class DesignController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'My design tasks',
-                'data' => $designs->items(),
-                'meta' => [
-                    'current_page' => $designs->currentPage(),
-                    'last_page'    => $designs->lastPage(),
-                    'total'        => $designs->total(),
-                    'per_page'     => $designs->perPage(),
-                ]
+                'data' => $designs
             ]);
 
         } catch (\Exception $e) {
