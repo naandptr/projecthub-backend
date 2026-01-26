@@ -17,6 +17,7 @@ class VendorDetail extends Model
      */
     protected $fillable = [
         'production_detail_id',
+        'vendor_id',  
         'vendor_name',
         'start_date',
         'deadline',
