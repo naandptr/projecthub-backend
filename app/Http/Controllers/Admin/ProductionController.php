@@ -12,17 +12,15 @@ class ProductionController extends Controller
 {
     /* GET ALL PRODUCTIONS */
     public function index()
-    {
-        $limit = min(request('limit', 10), 30);
-
+    {        
         $productions = Production::with(['order', 'order.statusHistory'])
             ->whereHas('order.statusHistory', function ($q) {
                 $q->where('status_stage', 'in_production');
             })
             ->orderBy('created_at', 'desc')
-            ->paginate($limit);
+            ->get();
 
-        $productions->getCollection()->transform(function ($production) {
+        $productions = $productions->map(function ($production) {
             $approvedDesign = $production->order->design->designItems->firstWhere('design_status', 'approved');
             $existedResult = $production->productionResult;
             
@@ -48,13 +46,7 @@ class ProductionController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'List of productions',
-            'data' => $productions->items(),
-            'meta' => [
-                'current_page' => $productions->currentPage(),
-                'last_page'    => $productions->lastPage(),
-                'total'        => $productions->total(),
-                'per_page'     => $productions->perPage(),
-            ]
+            'data' => $productions
         ]);
     }
 

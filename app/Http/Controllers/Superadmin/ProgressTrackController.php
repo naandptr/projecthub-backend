@@ -12,16 +12,14 @@ class ProgressTrackController extends Controller
     /* GET ALL ORDERS */
     public function index()
     {
-        $limit = min(request('limit', 10), 30);
-
         $orders = Order::with([
             'design.assignedTo',
             'production.assignedTo',
             'statusHistory'
         ])->orderBy('created_at', 'desc')
-        ->paginate($limit);
+        ->get();
 
-        $orders->getCollection()->transform(function ($order) {
+        $orders = $orders->map(function ($order) {
             // Calculate estimated project duration in days (from order date to deadline)
             $estimatedDuration = Carbon::parse($order->order_date)
                 ->diffInDays(Carbon::parse($order->order_deadline));
@@ -78,13 +76,7 @@ class ProgressTrackController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Order progress list',
-            'data' => $orders->items(),
-            'meta' => [
-                'current_page' => $orders->currentPage(),
-                'last_page'    => $orders->lastPage(),
-                'total'        => $orders->total(),
-                'per_page'     => $orders->perPage(),
-            ]
+            'data' => $orders
         ]);
     }
 }

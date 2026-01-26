@@ -15,27 +15,19 @@ class OrderController extends Controller
 {
     /* GET ALL ORDERS */
     public function index()
-    {
-        $limit = min(request('limit', 10), 30);
-
+    {        
         $orders = Order::with([
             'design',
             'design.assignedTo',
             'statusHistory'
         ])
         ->orderBy('created_at', 'desc')
-        ->paginate($limit);
+        ->get();
 
         return response()->json([
             'success' => true,
             'message' => 'List of orders',
-            'data' => $orders->items(), 
-            'meta' => [
-                'current_page' => $orders->currentPage(),
-                'last_page'    => $orders->lastPage(),
-                'total'        => $orders->total(),
-                'per_page'     => $orders->perPage(),
-            ]
+            'data' => $orders, 
         ]);
     }
 

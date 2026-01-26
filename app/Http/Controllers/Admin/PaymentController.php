@@ -13,14 +13,12 @@ class PaymentController extends Controller
 {
     /* GET ALL ORDER */
     public function index()
-    {
-        $limit = min(request('limit', 10), 30);
-
+    {        
         $orders = Order::with(['payment', 'shipment'])
             ->orderBy('created_at', 'desc')
-            ->paginate($limit);
+            ->get();
 
-        $orders->getCollection()->transform(function ($order) {
+        $orders = $orders->map(function ($order) {
             return [
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
@@ -33,13 +31,7 @@ class PaymentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $orders->items(),
-            'meta' => [
-                'current_page' => $orders->currentPage(),
-                'last_page'    => $orders->lastPage(),
-                'total'        => $orders->total(),
-                'per_page'     => $orders->perPage(),
-            ]
+            'data' => $orders
         ]);
     }
 
