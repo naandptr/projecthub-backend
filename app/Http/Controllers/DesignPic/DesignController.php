@@ -36,6 +36,8 @@ class DesignController extends Controller
             $designs = $designs->map(function ($design) {
                 $latestStatus = $design->order->statusHistory->first();
                 $items = $design->designItems;
+                $approvedItem = $design->designItems->firstWhere('design_status', 'approved');
+                $latestItem = $design->designItems->first();
 
                 return [
                     'id' => $design->id,
@@ -46,13 +48,8 @@ class DesignController extends Controller
                     'deadline' => $design->order->order_deadline,
                     'order_file' => asset('storage/' . $design->order->order_file),
                     'order_file_name' => basename($design->order->order_file),
-                    'current_status' => $latestStatus?->status_stage ?? 'pending',
-                    'design_stats' => [
-                        'in_progress' => $items->where('design_status', 'in_progress')->count(),
-                        'approved'    => $items->where('design_status', 'approved')->count(),
-                        'revision'    => $items->where('design_status', 'revision')->count(),
-                        'total'       => $items->count(),
-                    ]
+                    'image_cover' => $approvedItem?->design_file ?? $latestItem?->design_file ?? $design->order->order_file,
+                    'current_status' => $latestStatus?->status_stage ?? 'pending'
                 ];
             });
 

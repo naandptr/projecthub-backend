@@ -16,9 +16,7 @@ class OrderController extends Controller
     /* GET ALL ORDERS */
     public function index()
     {        
-        $orders = Order::with([
-            'design',
-            'design.assignedTo',
+        $orders = Order::with([            
             'statusHistory'
         ])
         ->orderBy('created_at', 'desc')
@@ -34,9 +32,7 @@ class OrderController extends Controller
     /* GET ORDER BY ID */
     public function show($orderId)
     {
-        $order = Order::with([
-            'design',
-            'production',
+        $order = Order::with([            
             'design.assignedTo',
             'production.assignedTo',
             'statusHistory'
@@ -245,9 +241,7 @@ class OrderController extends Controller
 
     /* GET ALL COMPLETED ORDER */
     public function completed()
-    {
-        $limit = min(request('limit', 10), 30);
-
+    {        
         $orders = Order::with([
             'shipment',
             'latestStatus'
@@ -256,7 +250,7 @@ class OrderController extends Controller
                 $q->where('status_stage', 'completed');
             })
             ->orderBy('created_at', 'desc')
-            ->paginate($limit);
+            ->get();
 
         if ($orders->isEmpty()) {
             return response()->json([
@@ -268,13 +262,7 @@ class OrderController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'List of completed orders',
-            'data' => $orders->items(),
-            'meta' => [
-                'current_page' => $orders->currentPage(),
-                'last_page'    => $orders->lastPage(),
-                'total'        => $orders->total(),
-                'per_page'     => $orders->perPage(),
-            ]
+            'data' => $orders
         ]);
     }
 }
