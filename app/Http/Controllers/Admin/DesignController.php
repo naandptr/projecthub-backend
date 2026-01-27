@@ -17,10 +17,7 @@ class DesignController extends Controller
     {
         $designs = Design::with([
             'order',
-            'assignedTo',
-            'designItems' => function ($q) {
-                $q->orderBy('created_at', 'desc');
-            },
+            'assignedTo',            
             'order.statusHistory'
         ])
         ->whereHas('order.statusHistory', function ($q) {
@@ -39,7 +36,14 @@ class DesignController extends Controller
                 'assigned_to' => $design->assigned_to,
                 'approval_status' => $approvedItem ? true : !$design->designItems->contains('design_status', 'in_progress'),
                 'image_cover' => $approvedItem?->design_file ?? $latestItem?->design_file ?? $design->order->order_file,
-                'order' => $design->order,
+                'order' => [
+                    'id' => $design->order->id,
+                    'cust_name' => $design->order->cust_name,
+                    'order_date' => $design->order->order_date,
+                    'order_deadline' => $design->order->order_deadline,
+                    'product_name' => $design->order->product_name,
+                    'status_history' => $design->order->statusHistory                    
+                ]
             ];
         });
 
