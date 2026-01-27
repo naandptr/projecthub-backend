@@ -12,8 +12,7 @@ class RoleController extends Controller
     /* GET ALL ROLES */
     public function index()
     {        
-        $roles = Role::with('user')
-            ->orderBy('created_at', 'desc')
+        $roles = Role::orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([

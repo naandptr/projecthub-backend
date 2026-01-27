@@ -23,6 +23,7 @@ class PaymentController extends Controller
                 'order_id' => $order->id,
                 'order_number' => $order->order_number,
                 'customer' => $order->cust_name,
+                'product_name' => $order->product_name,
                 'amount' => $order->product_price * $order->product_quantity,
                 'payments' => $order->payment,
                 'shipment' => $order->shipment,
