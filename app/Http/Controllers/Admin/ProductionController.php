@@ -17,7 +17,7 @@ class ProductionController extends Controller
             ->whereHas('order.statusHistory', function ($q) {
                 $q->where('status_stage', 'in_production');
             })
-            ->orderBy('created_at', 'desc')
+            ->latest()
             ->get();
 
         $productions = $productions->map(function ($production) {

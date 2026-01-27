@@ -16,7 +16,8 @@ class UserController extends Controller
     public function index()
     {        
         $users = User::with('role')
-            ->orderBy('created_at', 'desc')
+            ->select('id', 'role_id', 'full_name', 'username', 'email', 'user_status')
+            ->latest()
             ->get();
 
         return response()->json([

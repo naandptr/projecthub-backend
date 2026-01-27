@@ -477,9 +477,10 @@ class ProductionController extends Controller
                             'vendor_name' => $vendorDetail->vendor->vendor_name ?? null,
                             'vendor_code' => $vendorDetail->vendor->vendor_code ?? null,
                             'vendor_contact' => $vendorDetail->vendor->vendor_contact ?? null,
-                            'start_date' => $vendorDetail->start_date->format('Y-m-d'),
-                            'deadline' => $vendorDetail->deadline->format('Y-m-d'),
+                            
                         ],
+                        'start_date' => $vendorDetail->start_date->format('Y-m-d'),
+                        'deadline' => $vendorDetail->deadline->format('Y-m-d'),
                         'created_at' => $detail->created_at,
                     ],
                 ], 201);

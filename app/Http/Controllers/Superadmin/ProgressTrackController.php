@@ -16,7 +16,7 @@ class ProgressTrackController extends Controller
             'design.assignedTo',
             'production.assignedTo',
             'statusHistory'
-        ])->orderBy('created_at', 'desc')
+        ])->latest()
         ->get();
 
         $orders = $orders->map(function ($order) {
