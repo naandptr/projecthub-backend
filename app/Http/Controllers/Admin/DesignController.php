@@ -42,7 +42,7 @@ class DesignController extends Controller
                     'order_date' => $design->order->order_date,
                     'order_deadline' => $design->order->order_deadline,
                     'product_name' => $design->order->product_name,
-                    'status_history' => $design->order->latestStatus,                  
+                    'status_history' => $design->order->statusHistory,                  
                 ]
             ];
         });
