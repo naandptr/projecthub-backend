@@ -163,7 +163,7 @@ class ProductionController extends Controller
                     if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
                         $detailData['vendor_detail'] = [
                             'id' => $detail->vendorDetail->id,
-                            'vendor_name' => $detail->vendorDetail->vendor_name,
+                            'vendor_name' => $detail->vendorDetail->vendor->vendor_name,
                             'start_date' => $detail->vendorDetail->start_date,
                             'deadline' => $detail->vendorDetail->deadline,
                         ];
@@ -226,7 +226,7 @@ class ProductionController extends Controller
             if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
                 $responseData['vendor_detail'] = [
                     'id' => $detail->vendorDetail->id,
-                    'vendor_name' => $detail->vendorDetail->vendor_name,
+                    'vendor_name' => $detail->vendorDetail->vendor->vendor_name,
                     'start_date' => $detail->vendorDetail->start_date->format('Y-m-d'),
                     'deadline' => $detail->vendorDetail->deadline->format('Y-m-d'),
                 ];
