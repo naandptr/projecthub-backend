@@ -16,7 +16,6 @@ class DesignController extends Controller
     public function index()
     {
         $designs = Design::with([
-            'order',
             'assignedTo',            
             'order.statusHistory'
         ])

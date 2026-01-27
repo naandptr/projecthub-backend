@@ -19,9 +19,11 @@ use App\Http\Controllers\PicProduction\ProductionController as ProductionPicProd
 use App\Http\Controllers\PicProduction\VendorController as ProductionPicVendorController;
 
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:5,1'); // Max 5 attempts per minute
 
-Route::get('/track-order', [TrackOrderController::class, 'show']);
+Route::get('/track-order', [TrackOrderController::class, 'show'])
+    ->middleware('throttle:20,1'); // Max 20 requests per minute
 
 Route::middleware('auth:sanctum')->get('/whoami', fn(Request $r) => $r->user());
 
@@ -32,7 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/change-password', [AuthController::class, 'changePassword']);
 
     /* SUPERADMIN ROUTES */
-    Route::middleware(['role:superadmin'])->prefix('superadmin')->group(function () {
+    Route::middleware(['role:superadmin', 'rateLimit'])->prefix('superadmin')->group(function () {
         // ROLE
         Route::get('/roles', [RoleController::class, 'index']);
         Route::post('/roles', [RoleController::class, 'store']);
@@ -59,7 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* ADMIN ROUTES */
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
+    Route::middleware('role:admin', 'rateLimit')->prefix('admin')->group(function () {
         // USER
         Route::get('/users/by-role/{role}', [AdminUserController::class, 'getUsersByRole']);
 
@@ -97,7 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* DESIGNER_PIC ROUTES */
-    Route::middleware('role:designer_pic')->prefix('designer')->group(function () {
+    Route::middleware('role:designer_pic', 'rateLimit')->prefix('designer')->group(function () {
         // TASKS
         Route::get('/tasks', [DesignPicDesignController::class, 'index']);
         Route::get('/tasks/{orderId}', [DesignPicDesignController::class, 'show']);
@@ -110,7 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* PRODUCTION_PIC ROUTES */
-    Route::middleware('role:production_pic')->prefix('production')->group(function () {
+    Route::middleware('role:production_pic', 'rateLimit')->prefix('production')->group(function () {
         // TASKS
         Route::get('/tasks', [ProductionPicProductionController::class, 'index']);
         Route::get('/tasks/{id}', [ProductionPicProductionController::class, 'show']);
