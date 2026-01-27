@@ -18,9 +18,7 @@ class OrderController extends Controller
     {        
         $orders = Order::with([            
             'statusHistory'
-        ])
-        ->select('orders.id', 'orders.order_number', 'orders.cust_name', 'orders.order_date', 
-                'orders.order_deadline', 'orders.product_name', 'orders.order_file')
+        ])        
         ->latest()
         ->get();
 
