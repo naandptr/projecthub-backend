@@ -23,7 +23,7 @@ class DesignController extends Controller
         ->whereHas('order.statusHistory', function ($q) {
             $q->where('status_stage', 'designing');
         })
-        ->orderBy('created_at', 'desc')
+        ->latest()
         ->get();
 
         $designs = $designs->map(function ($design) {
@@ -42,7 +42,7 @@ class DesignController extends Controller
                     'order_date' => $design->order->order_date,
                     'order_deadline' => $design->order->order_deadline,
                     'product_name' => $design->order->product_name,
-                    'status_history' => $design->order->statusHistory                    
+                    'status_history' => $design->order->latestStatus,                  
                 ]
             ];
         });

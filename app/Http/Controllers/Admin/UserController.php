@@ -11,31 +11,35 @@ class UserController extends Controller
     /* GET USER BY ROLE */
     public function getUsersByRole($role)
     {
+        // Validate role exists first
+        $roleRecord = Role::where('role_name', $role)->first();
+
+        if (!$roleRecord) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Role not found.'
+            ], 404);
+        }
+
+        // Only allow specific roles
+        if (!in_array($roleRecord->role_name, ['designer_pic', 'production_pic'])) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Forbidden access.'
+            ], 403);
+        }
+
         $users = User::whereHas('role', function ($q) use ($role) {
             $q->where('role_name', $role);
         })
         ->where('user_status', 'active')
         ->select('id', 'full_name')
+        ->latest()
         ->get();
 
-        $role = Role::where('role_name', $role)->first();
-
-        if ($role->role_name == 'designer_pic') {
-            return response()->json([
-                'success' => true,
-                'data' => $users
-            ]);
-        }
-
-        if ($role->role_name == 'production_pic') {
-            return response()->json([
-                'success' => true,
-                'data' => $users
-            ]);
-        }
-
         return response()->json([
-            'success' => false, 
-            'message' => 'Forbidden access.'], 403);
+            'success' => true,
+            'data' => $users
+        ]);
     }
 }

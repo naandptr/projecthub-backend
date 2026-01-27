@@ -12,7 +12,8 @@ class VendorController extends Controller
     /* GET ALL VENDORS */
     public function index()
     {       
-        $vendors = Vendor::orderBy('created_at', 'desc')
+        $vendors = Vendor::select('id', 'vendor_name', 'vendor_code', 'vendor_contact', 'vendor_address')
+            ->latest()
             ->get();
 
         return response()->json([

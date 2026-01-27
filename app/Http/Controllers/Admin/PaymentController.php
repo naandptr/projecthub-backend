@@ -15,7 +15,7 @@ class PaymentController extends Controller
     public function index()
     {        
         $orders = Order::with(['payment', 'shipment'])
-            ->orderBy('created_at', 'desc')
+            ->latest()
             ->get();
 
         $orders = $orders->map(function ($order) {
