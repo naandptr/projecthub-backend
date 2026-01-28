@@ -57,7 +57,7 @@ class ProductionController extends Controller
             'assignedTo', 
             'productionDetails', 
             'productionDetails.inHouseDetail', 
-            'productionDetails.vendorDetail', 
+            'productionDetails.vendorDetail.vendor', 
             'productionResult', 
             'order.statusHistory'])
             ->find($productionId);
