@@ -43,6 +43,8 @@ class ProductionController extends Controller
             $formattedProductions = $productions->map(function ($production) {
                 $latestStatus = $production->order->statusHistory->first();
                 $totalPrice = $production->order->product_quantity * $production->order->product_price;
+                $approvedItem = $production->order->design->designItems->firstWhere('design_status', 'approved');
+                $resultItem = $production->productionResult;
 
                 return [
                     'id' => $production->id,
@@ -57,8 +59,7 @@ class ProductionController extends Controller
                         'order_total' => $totalPrice,
                         'deadline' => $production->order->order_deadline,
                     ],
-                    'order_file_name' => basename($production->order->order_file),
-                    'order_file' => asset('storage/' . $production->order->order_file), 
+                    'image_cover' => $resultItem?->production_file ?? $approvedItem?->design_file,
                     'order_notes' => $production->order->order_notes,
                     'status' => [
                         'status_stage' => $latestStatus?->status_stage ?? 'pending',
@@ -226,13 +227,21 @@ class ProductionController extends Controller
             if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
                 $responseData['vendor_detail'] = [
                     'id' => $detail->vendorDetail->id,
-                    'vendor_name' => $detail->vendorDetail->vendor->vendor_name,
+                    'production_detail_id' => $detail->vendorDetail->production_detail_id,
+                    'vendor_id' => $detail->vendorDetail->vendor_id,
                     'start_date' => $detail->vendorDetail->start_date->format('Y-m-d'),
                     'deadline' => $detail->vendorDetail->deadline->format('Y-m-d'),
+                    'vendor' => [
+                        'vendor_name' => $detail->vendorDetail->vendor->vendor_name ?? null,
+                        'vendor_code' => $detail->vendorDetail->vendor->vendor_code ?? null,
+                        'vendor_contact' => $detail->vendorDetail->vendor->vendor_contact ?? null,
+                        'vendor_address' => $detail->vendorDetail->vendor->vendor_address ?? null,
+                    ]
                 ];
             } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
                 $responseData['inhouse_detail'] = [
                     'id' => $detail->inhouseDetail->id,
+                    'production_detail_id' => $detail->inhouseDetail->production_detail_id,
                     'start_date' => $detail->inhouseDetail->start_date->format('Y-m-d'),
                     'end_date' => $detail->inhouseDetail->end_date->format('Y-m-d'),
                     'production_budget' => $detail->inhouseDetail->production_budget,
@@ -473,15 +482,17 @@ class ProductionController extends Controller
                         'production_type' => $detail->production_type,
                         'vendor_detail' => [
                             'id' => $vendorDetail->id,
+                            'production_detail_id' => $vendorDetail->production_detail_id,
                             'vendor_id' => $vendorDetail->vendor_id,
-                            'vendor_name' => $vendorDetail->vendor->vendor_name ?? null,
-                            'vendor_code' => $vendorDetail->vendor->vendor_code ?? null,
-                            'vendor_contact' => $vendorDetail->vendor->vendor_contact ?? null,
-                            
-                        ],
-                        'start_date' => $vendorDetail->start_date->format('Y-m-d'),
-                        'deadline' => $vendorDetail->deadline->format('Y-m-d'),
-                        'created_at' => $detail->created_at,
+                            'start_date' => $vendorDetail->start_date->format('Y-m-d'),
+                            'deadline' => $vendorDetail->deadline->format('Y-m-d'),
+                            'vendor' => [
+                                'vendor_name' => $vendorDetail->vendor->vendor_name ?? null,
+                                'vendor_code' => $vendorDetail->vendor->vendor_code ?? null,
+                                'vendor_contact' => $vendorDetail->vendor->vendor_contact ?? null,
+                                'vendor_address' => $vendorDetail->vendor->vendor_address ?? null,
+                            ]
+                        ],                    
                     ],
                 ], 201);
 
@@ -589,18 +600,23 @@ class ProductionController extends Controller
             ];
 
             if ($detail->production_type === 'vendor' && $detail->vendorDetail) {
-                $responseData['vendor_detail'] = [
+                $responseData['vendor_detail'] = [                      
                     'id' => $detail->vendorDetail->id,
+                    'production_detail_id' => $detail->vendorDetail->production_detail_id,
                     'vendor_id' => $detail->vendorDetail->vendor_id,
-                    'vendor_name' => $detail->vendorDetail->vendor->vendor_name ?? null,
-                    'vendor_code' => $detail->vendorDetail->vendor->vendor_code ?? null,
-                    'vendor_contact' => $detail->vendorDetail->vendor->vendor_contact ?? null,
                     'start_date' => $detail->vendorDetail->start_date->format('Y-m-d'),
                     'deadline' => $detail->vendorDetail->deadline->format('Y-m-d'),
+                    'vendor' => [
+                        'vendor_name' => $detail->vendorDetail->vendor->vendor_name ?? null,
+                        'vendor_code' => $detail->vendorDetail->vendor->vendor_code ?? null,
+                        'vendor_contact' => $detail->vendorDetail->vendor->vendor_contact ?? null,
+                        'vendor_address' => $detail->vendorDetail->vendor->vendor_address ?? null,
+                    ]
                 ];
             } elseif ($detail->production_type === 'in_house' && $detail->inhouseDetail) {
                 $responseData['inhouse_detail'] = [
                     'id' => $detail->inhouseDetail->id,
+                    'production_detail_id' => $detail->inhouseDetail->production_detail_id,
                     'start_date' => $detail->inhouseDetail->start_date->format('Y-m-d'),
                     'end_date' => $detail->inhouseDetail->end_date->format('Y-m-d'),
                     'production_budget' => $detail->inhouseDetail->production_budget,
