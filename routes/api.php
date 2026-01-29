@@ -29,22 +29,26 @@ Route::middleware('auth:sanctum')->get('/whoami', fn(Request $r) => $r->user());
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout', [AuthController::class, 'logout'])
+        ->middleware('throttle:5,1'); // Max 5 attempts per minute
 
-    Route::put('/change-password', [AuthController::class, 'changePassword']);
+    Route::put('/change-password', [AuthController::class, 'changePassword'])
+        ->middleware('throttle:1,1'); // Max 1 attempts per minute
 
     /* SUPERADMIN ROUTES */
     Route::middleware(['role:superadmin', 'rateLimit'])->prefix('superadmin')->group(function () {
         // ROLE
         Route::get('/roles', [RoleController::class, 'index']);
-        Route::post('/roles', [RoleController::class, 'store']);
+        Route::post('/roles', [RoleController::class, 'store'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/roles/{roleId}', [RoleController::class, 'update']);
         Route::delete('/roles/{roleId}', [RoleController::class, 'destroy']);
 
         // USER
         Route::get('/users', [SuperadminUserController::class, 'index']);
         Route::get('/users/{userId}', [SuperadminUserController::class, 'show']);
-        Route::post('/users', [SuperadminUserController::class, 'store']);
+        Route::post('/users', [SuperadminUserController::class, 'store'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/users/{userId}', [SuperadminUserController::class, 'update']);
         Route::put('/users/{userId}/reset-password', [SuperadminUserController::class, 'resetPassword']);
         Route::delete('/users/{userId}', [SuperadminUserController::class, 'destroy']);
@@ -52,7 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // VENDOR
         Route::get('/vendors', [SuperadminVendorController::class, 'index']);
         Route::get('/vendors/{vendorId}', [SuperadminVendorController::class, 'show']);
-        Route::post('/vendors', [SuperadminVendorController::class, 'store']);
+        Route::post('/vendors', [SuperadminVendorController::class, 'store'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/vendors/{vendorId}', [SuperadminVendorController::class, 'update']);
         Route::delete('/vendors/{vendorId}', [SuperadminVendorController::class, 'destroy']);
         
