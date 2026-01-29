@@ -54,8 +54,7 @@ class ProductionController extends Controller
     public function show($productionId)
     {
         $production = Production::with(['order', 
-            'assignedTo', 
-            'productionDetails', 
+            'assignedTo',             
             'productionDetails.inHouseDetail', 
             'productionDetails.vendorDetail.vendor', 
             'productionResult', 

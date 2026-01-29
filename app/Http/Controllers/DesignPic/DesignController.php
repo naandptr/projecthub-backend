@@ -439,9 +439,9 @@ class DesignController extends Controller
             if ($designItem->design->assigned_to !== $userId) {
                 throw new \Exception('You do not have permission to delete this item');
             }            
-            
-            // Only allow deletion of items with 'revision' status (rejected designs)
-            if ($designItem->design_status !== 'revision') {
+
+            // Only allow deletion of items with 'in_progress' status (need approval designs)
+            if ($designItem->design_status !== 'in_progress') {
                 throw new \Exception('Cannot delete design item with status: ' . $designItem->design_status);
             }
 
