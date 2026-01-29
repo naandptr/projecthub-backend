@@ -67,7 +67,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ORDER
         Route::get('/orders', [OrderController::class, 'index']);
-        Route::post('/orders', [OrderController::class, 'store']);
+        Route::post('/orders', [OrderController::class, 'store'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::get('/orders/{orderId}', [OrderController::class, 'show']);
         Route::put('/orders/{orderId}', [OrderController::class, 'update']);
         Route::delete('/orders/{orderId}', [OrderController::class, 'destroy']);
@@ -77,23 +78,27 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/designs', [AdminDesignController::class, 'index']);
         Route::get('/designs/{designId}', [AdminDesignController::class, 'show']);
         Route::put('/design-items/{itemId}', [AdminDesignController::class, 'updateItemStatus']);
-        Route::post('/designs/{designId}/confirm', [AdminDesignController::class, 'confirmDesign']);
+        Route::post('/designs/{designId}/confirm', [AdminDesignController::class, 'confirmDesign'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
 
         // PRODUCTION
         Route::get('/productions', [AdminProductionController::class, 'index']);
         Route::get('/productions/{productionId}', [AdminProductionController::class, 'show']);
-        Route::post('/productions/{productionId}/confirm', [AdminProductionController::class, 'confirmProduction']);
+        Route::post('/productions/{productionId}/confirm', [AdminProductionController::class, 'confirmProduction'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
 
         // PAYMENT 
         Route::get('/payments', [PaymentController::class, 'index']);
         Route::get('/payments/{orderId}', [PaymentController::class, 'show']);
-        Route::post('/payments/{orderId}', [PaymentController::class, 'store']);
+        Route::post('/payments/{orderId}', [PaymentController::class, 'store'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/payments/{paymentId}', [PaymentController::class, 'update']);
         Route::delete('/payments/{paymentId}', [PaymentController::class, 'destroy']);
 
         // SHIPMENT 
         Route::get('/shipments/{orderId}', [ShipmentController::class, 'show']);
-        Route::post('/shipments/{orderId}', [ShipmentController::class, 'store']);
+        Route::post('/shipments/{orderId}', [ShipmentController::class, 'store'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/shipments/{shipmentId}', [ShipmentController::class, 'update']);
         Route::delete('/shipments/{shipmentId}', [ShipmentController::class, 'destroy']);
     });
@@ -103,10 +108,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // TASKS
         Route::get('/tasks', [DesignPicDesignController::class, 'index']);
         Route::get('/tasks/{orderId}', [DesignPicDesignController::class, 'show']);
-        Route::post('/tasks/{orderId}/start', [DesignPicDesignController::class, 'startDesign']);
+        Route::post('/tasks/{orderId}/start', [DesignPicDesignController::class, 'startDesign'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
 
         // DESIGN ITEMS
-        Route::post('/design-items/{designId}', [DesignPicDesignController::class, 'storeItem']);
+        Route::post('/design-items/{designId}', [DesignPicDesignController::class, 'storeItem'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/design-items/{itemId}', [DesignPicDesignController::class, 'updateItem']);
         Route::delete('/design-items/{itemId}', [DesignPicDesignController::class, 'destroyItem']);
     });
@@ -116,18 +123,21 @@ Route::middleware('auth:sanctum')->group(function () {
         // TASKS
         Route::get('/tasks', [ProductionPicProductionController::class, 'index']);
         Route::get('/tasks/{id}', [ProductionPicProductionController::class, 'show']);
-        Route::post('/{id}/start', [ProductionPicProductionController::class, 'startProduction']);
+        Route::post('/{id}/start', [ProductionPicProductionController::class, 'startProduction'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
 
         // PRODUCTION DETAILS
         Route::get('/vendors', [ProductionPicVendorController::class, 'index']);
         Route::get('/{id}/details', [ProductionPicProductionController::class, 'getDetail']);
-        Route::post('/{id}/details', [ProductionPicProductionController::class, 'storeDetail']);
+        Route::post('/{id}/details', [ProductionPicProductionController::class, 'storeDetail'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/details/{detailId}', [ProductionPicProductionController::class, 'updateDetail']);
         Route::delete('/details/{detailId}', [ProductionPicProductionController::class, 'deleteDetail']);
 
         // PRODUCTION RESULTS
         Route::get('/results/{productionId}', [ProductionPicProductionController::class, 'getResult']);
-        Route::post('/details/{productionId}/result', [ProductionPicProductionController::class, 'storeResult']);
+        Route::post('/details/{productionId}/result', [ProductionPicProductionController::class, 'storeResult'])
+            ->middleware('throttle:1,1'); // Max 1 attempts per minute
         Route::put('/results/{resultId}', [ProductionPicProductionController::class, 'updateResult']);
         Route::delete('/results/{productionId}', [ProductionPicProductionController::class, 'deleteResult']);
    });
